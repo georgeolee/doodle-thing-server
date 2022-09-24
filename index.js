@@ -1,25 +1,37 @@
 import express from 'express'
-import dotenv from 'dotenv'
 import mongoose from 'mongoose'
-import 'socket.io'
 import { Server } from 'socket.io'
-
 import http from 'http'
 
+
+//dotenv import & config – skip for production version
 if(process.env.NODE_ENV !== 'production'){
-    dotenv.config()
+    await import('dotenv').then(dotenv => { dotenv.config()})
 }
 
+
 const app = express()
+
 const server = http.createServer(app)
-// const server = app.listen(process.env.PORT)
+
 const io = new Server(server, {
     cors:{
         origin: process.env.CLIENT_URL,
-        // origin: true,
-        // methods: ['GET', 'POST']
     }
 })
+
+//express routes
+
+import { router as indexRouter } from './routes/index.js'
+app.use('/', indexRouter)
+
+
+server.listen(process.env.PORT, () => {
+    console.log(`listening at ${server.address().address}:${server.address().port}`)
+})
+
+
+//socket.io stuff
 
 io.on('connection', socket => {
 
@@ -44,10 +56,3 @@ io.on('connection', socket => {
     })
 })
 
-server.listen(process.env.PORT, () => {
-    console.log(`listening on port ${process.env.PORT}`)
-})
-
-// io.on('message', msg => console.log('msg'))
-
-// app.get()
