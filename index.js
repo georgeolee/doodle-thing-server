@@ -4,12 +4,15 @@ import mongoose from 'mongoose'
 import 'socket.io'
 import { Server } from 'socket.io'
 
+import http from 'http'
+
 if(process.env.NODE_ENV !== 'production'){
     dotenv.config()
 }
 
 const app = express()
-const server = app.listen(process.env.PORT)
+const server = http.createServer(app)
+// const server = app.listen(process.env.PORT)
 const io = new Server(server, {
     cors:{
         origin: process.env.CLIENT_URL,
@@ -41,7 +44,9 @@ io.on('connection', socket => {
     })
 })
 
-
+server.listen(process.env.PORT, () => {
+    console.log(`listening on port ${process.env.PORT}`)
+})
 
 // io.on('message', msg => console.log('msg'))
 
