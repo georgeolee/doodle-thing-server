@@ -4,5 +4,5 @@ export const router = express()
 
 
 router.get('/', (req, res) => {
-    res.send(`server up and running; go to ${process.env.CLIENT_URL} for client app`)
+    res.send(`server up and running; go to <a href=${process.env.CLIENT_URL}>${process.env.CLIENT_URL}</a> for client app`)
 })
