@@ -12,9 +12,9 @@ const app = express()
 const server = app.listen(process.env.PORT)
 const io = new Server(server, {
     cors:{
-        // origin: process.env.CLIENT_URL,
-        origin: true,
-        methods: ['GET', 'POST']
+        origin: process.env.CLIENT_URL,
+        // origin: true,
+        // methods: ['GET', 'POST']
     }
 })
 
