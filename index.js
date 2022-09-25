@@ -2,15 +2,31 @@ import express from 'express'
 import mongoose from 'mongoose'
 import { Server } from 'socket.io'
 import http from 'http'
-
+import * as path from 'path'
+import bodyParser from 'body-parser'
 
 //dotenv import & config – skip for production version
 if(process.env.NODE_ENV !== 'production'){
     await import('dotenv').then(dotenv => { dotenv.config()})
 }
 
+//MONGODB
+import {CanvasData} from './models/canvasData.js'
+
+//connect to mongodb
+mongoose.connect(process.env.DATABASE_URL)
+const db = mongoose.connection
+db.on('error', error => console.log(error))
+db.once('open', () => console.log('connected to mongodb'))
+
+
+
 
 const app = express()
+app.use(bodyParser.json({
+    limit:'1mb',
+    type: '*/*'
+}))
 
 const server = http.createServer(app)
 
@@ -23,7 +39,19 @@ const io = new Server(server, {
 //express routes
 
 import { router as indexRouter } from './routes/index.js'
+import { router as canvasRouter } from './routes/canvas.js'
+
 app.use('/', indexRouter)
+app.use('/canvas', canvasRouter)
+
+
+// const fn = './canvas.png'
+// app.get('/canvas', async (req, res) => {
+//     const buffer = cnv.toBuffer()
+    
+//     fs.writeFileSync(fn, buffer)
+//     res.download(fn)
+// })
 
 
 server.listen(process.env.PORT, () => {
@@ -51,8 +79,16 @@ io.on('connection', socket => {
         console.log(`click from ${socket.id}: ${date}`)
     })
 
+    
+
     socket.on('pointerState', data => {
         socket.broadcast.emit('pointerState', data)
+
+        // doodler.consumePointerStates(JSON.parse(data))
     })
+
+    setTimeout(() => {
+        io.to(socket.id).emit('request canvas data')
+    }, 4000)
 })
 
