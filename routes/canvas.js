@@ -18,7 +18,6 @@ getRecentSnapshots(localSnapshotCount).then(results => {
 
 router.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL)    
-    // req.header('Access-Control-Allow-Origin', process.env.CLIENT_URL)
 
     console.log(`${req.method}: ${req.originalUrl}`)
 
@@ -28,11 +27,7 @@ router.use((req, res, next) => {
 //get canvas snapshot route
 router.get('/', (req, res) => {
     res.header('Content-Type', 'application/json')
-
     console.log('received /canvas GET request')
-    // res.set({'Content-Type':'application/json'})
-
-    // req.header('Access-Control-Allow-Origin', process.env.CLIENT_URL)
     const snapshot = recent.length ? {...recent[recent.length - 1]} : {'empty': true}
 
     res.json(snapshot)
@@ -44,10 +39,6 @@ router.get('/', (req, res) => {
 
 //post canvas snapshot route
 router.post('/', async (req, res) => {
-    // req.header('Access-Control-Allow-Origin', process.env.CLIENT_URL) //allow posting canvas data from client 
-    // console.log(req.body)
-
-    res.status = 200
 
     try {
         const snapshot = new CanvasData({...req.body})
@@ -67,6 +58,7 @@ router.post('/', async (req, res) => {
         }
 
         const doc = await snapshot.save()
+        res.status(200).send()
 
         if(doc.dataURL){
             console.log('saved: ')
