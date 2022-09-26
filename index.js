@@ -28,6 +28,15 @@ app.use(bodyParser.json({
     type: '*/*'
 }))
 
+//express routes
+import { router as indexRouter } from './routes/index.js'
+import { router as canvasRouter } from './routes/canvas.js'
+
+app.use('/', indexRouter)
+app.use('/canvas', canvasRouter)
+
+
+
 const server = http.createServer(app)
 
 const io = new Server(server, {
@@ -36,13 +45,7 @@ const io = new Server(server, {
     }
 })
 
-//express routes
 
-import { router as indexRouter } from './routes/index.js'
-import { router as canvasRouter } from './routes/canvas.js'
-
-app.use('/', indexRouter)
-app.use('/canvas', canvasRouter)
 
 
 // const fn = './canvas.png'
@@ -60,6 +63,19 @@ server.listen(process.env.PORT, () => {
 
 
 //socket.io stuff
+
+setInterval(async ()=>{    
+    console.log('interval')
+    const c = await io.allSockets()
+
+    for(const id of c){
+        console.log(id)
+        console.log('requesting client canvas data')
+        io.to(id).emit('request canvas data')
+        break
+    }
+    
+}, 20000)
 
 io.on('connection', socket => {
 
@@ -87,8 +103,8 @@ io.on('connection', socket => {
         // doodler.consumePointerStates(JSON.parse(data))
     })
 
-    setTimeout(() => {
-        io.to(socket.id).emit('request canvas data')
-    }, 4000)
+    // setTimeout(() => {
+    //     io.to(socket.id).emit('request canvas data')
+    // }, 4000)
 })
 
