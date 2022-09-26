@@ -70,12 +70,12 @@ setInterval(async ()=>{
 
     for(const id of c){
         console.log(id)
-        console.log('requesting client canvas data')
+        console.log(`requesting client canvas data from socket id ${id}`)
         io.to(id).emit('request canvas data')
         break
     }
     
-}, 20000)
+}, 10000)
 
 io.on('connection', socket => {
 
@@ -85,6 +85,7 @@ io.on('connection', socket => {
 
     socket.on('disconnect', () => {
         console.log(`socket disconnected ----- id: ${socket?.id}`)
+        socket.removeAllListeners()
     })
 
     socket.on('message', msg => {

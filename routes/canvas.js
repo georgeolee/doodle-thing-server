@@ -66,7 +66,14 @@ router.post('/', async (req, res) => {
             
         }
 
-        await snapshot.save()
+        const doc = await snapshot.save()
+
+        if(doc.dataURL){
+            console.log('saved: ')
+            console.log(doc.dataURL.substring(0,25))
+        }else{
+            console.log('didn\'t save?')
+        }
 
         if(recent.length >= localSnapshotCount){
             recent.shift()
