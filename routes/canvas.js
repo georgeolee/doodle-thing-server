@@ -17,7 +17,7 @@ getRecentSnapshots(localSnapshotCount).then(results => {
 })
 
 router.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL + 'canvas')    
+    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL)    
     // req.header('Access-Control-Allow-Origin', process.env.CLIENT_URL)
 
     console.log(`${req.method}: ${req.originalUrl}`)
