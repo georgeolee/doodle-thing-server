@@ -24,10 +24,17 @@ router.use((req, res, next) => {
     next()
 })
 
+
+//add query params for requesting specific image size
 //get canvas snapshot route
 router.get('/', (req, res) => {
     res.header('Content-Type', 'application/json')
     console.log('received /canvas GET request')
+
+
+    const {width, height} = req.query
+    //if width || height .... prefer same dimensions
+
     const snapshot = recent.length ? {...recent[recent.length - 1]} : {'empty': true}
 
     res.json(snapshot)
@@ -41,21 +48,8 @@ router.get('/', (req, res) => {
 router.post('/', async (req, res) => {
 
     try {
+
         const snapshot = new CanvasData({...req.body})
-
-        const results = await CanvasData.find({})
-        console.log(`found ${results.length} snapshots before saving`)
-
-        if(results.length >= process.env.CANVAS_SNAPSHOT_COUNT){
-            const numToRemove = results.length - process.env.CANVAS_SNAPSHOT_COUNT + 1
-            
-            console.log(`removing ${numToRemove} snapshots before saving`)
-
-            for(let n = 0; n < numToRemove; n++){
-                await removeOldestSnapshot(results)
-            }
-            
-        }
 
         const doc = await snapshot.save()
         res.status(200).send()
@@ -73,6 +67,32 @@ router.post('/', async (req, res) => {
         recent.push({...req.body})
 
         console.log('saved canvas snapshot')
+
+
+
+
+        const results = await CanvasData.find({})
+        console.log(`found ${results.length} snapshots after saving`)
+
+
+        //todo - hysteresis -> bump up max count & prune more than 1 when max exceeded (cut down on queries/sorting)
+        if(results.length >= process.env.CANVAS_SNAPSHOT_COUNT){
+            const numToRemove = results.length - process.env.CANVAS_SNAPSHOT_COUNT + 10
+            
+            console.log(`removing ${numToRemove} oldest snapshots after saving`)
+
+            const start = performance.now()
+            for(let n = 0; n < numToRemove; n++){
+                // await removeOldestSnapshot(results)
+                removeOldestSnapshot(results)
+            }
+            const dur = performance.now() - start
+
+            console.log(`removal duration: ${dur}`)
+            
+        }
+
+        
     } catch (error) {
         console.log(error)
     }
@@ -80,6 +100,7 @@ router.post('/', async (req, res) => {
 
 
 async function removeOldestSnapshot(queryResults){
+    const start = performance.now()
     try{
         //empty removal queue?
         if(removalQueue.length === 0){
@@ -117,6 +138,8 @@ async function removeOldestSnapshot(queryResults){
     }catch(e){
         console.log(e)
     }
+
+    console.log(`total removal execution: ${performance.now() - start}`)
 }
 
 // query db for recent canvas snapshots on server startup
