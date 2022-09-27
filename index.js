@@ -5,9 +5,13 @@ import http from 'http'
 import * as path from 'path'
 import bodyParser from 'body-parser'
 
+import puppeteer from 'puppeteer'
+
 //dotenv import & config – skip for production version
 if(process.env.NODE_ENV !== 'production'){
-    await import('dotenv').then(dotenv => { dotenv.config()})
+    await import('dotenv').then(dotenv => { 
+        dotenv.config()        
+    })
 }
 
 //MONGODB
@@ -31,10 +35,11 @@ app.use(bodyParser.json({
 //express routes
 import { router as indexRouter } from './routes/index.js'
 import { router as canvasRouter } from './routes/canvas.js'
+import { router as ghostRouter } from './routes/ghost.js'
 
 app.use('/', indexRouter)
 app.use('/canvas', canvasRouter)
-
+app.use('/ghost', ghostRouter)
 
 
 const server = http.createServer(app)
@@ -47,18 +52,10 @@ const io = new Server(server, {
 
 
 
-
-// const fn = './canvas.png'
-// app.get('/canvas', async (req, res) => {
-//     const buffer = cnv.toBuffer()
-    
-//     fs.writeFileSync(fn, buffer)
-//     res.download(fn)
-// })
-
-
 server.listen(process.env.PORT, () => {
     console.log(`listening at ${server.address().address}:${server.address().port}`)
+    
+    startGhost()
 })
 
 
@@ -107,5 +104,13 @@ io.on('connection', socket => {
     // setTimeout(() => {
     //     io.to(socket.id).emit('request canvas data')
     // }, 4000)
-})
+});
 
+async function startGhost(){
+    const url = `http://localhost:${process.env.PORT}/ghost`
+
+    console.log(url)
+    const browser = await puppeteer.launch()
+    const page = await browser.newPage()
+    await page.goto(url)
+}
