@@ -3,7 +3,6 @@ import mongoose from 'mongoose'
 import { Server } from 'socket.io'
 import http from 'http'
 import * as path from 'path'
-import bodyParser from 'body-parser'
 
 import puppeteer from 'puppeteer'
 
@@ -27,8 +26,13 @@ db.once('open', () => console.log('connected to mongodb'))
 
 
 const app = express()
-app.use(bodyParser.json({
-    limit:'1mb',
+// app.use(bodyParser.json({
+//     limit:'1mb',
+//     type: '*/*'
+// }))
+
+app.use(express.json({
+    limit: '1mb',
     type: '*/*'
 }))
 
