@@ -75,7 +75,7 @@ setInterval(async ()=>{
         break
     }
     
-}, 1000)
+}, 10000)
 
 io.on('connection', socket => {
 
