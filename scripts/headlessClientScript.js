@@ -13,6 +13,9 @@ const ghosts = {/*
     }
 */}
 
+const baseWidth = 300, baseHeight = 300;
+const pixelRatios = [1, 2, 3]
+
 function addCanvas(width, height){
 
     if(ghosts[width]?.[height]){
@@ -67,18 +70,32 @@ function connect(){
         }
     })
 
+    socket.on('canvas request', (dimensions = {}, ack) => {
+        const {width = baseWidth, height = baseHeight} = dimensions
+        
+        const cnv = ghosts[width]?.[height]?.canvas ?? ghosts[baseWidth][baseHeight].canvas
+
+        // console.log(cnv)
+
+        const dataURL = cnv.toDataURL()
+        // console.log(dataURL)
+
+        ack(null, {width, height,dataURL, timestamp: Date.now()})        
+    })
+
+    
     
 
-    socket.on('download', options => {
-        const {width, height} = options
+    // socket.on('download', options => {
+    //     const {width, height} = options
         
-        const cnv = ghosts[width]?.[height]?.canvas
+    //     const cnv = ghosts[width]?.[height]?.canvas
 
-        const data = cnv.toDataURL()
-        console.log(data)
+    //     const data = cnv.toDataURL()
+    //     console.log(data)
 
-        socket.emit('cdata', data)
-    })
+    //     socket.emit('cdata', data)
+    // })
 
     setInterval(() => {
         socket.emit('ping')
@@ -91,8 +108,10 @@ function runHeadlessClient(){
     console.log('B')
 
     connect()
-    addCanvas(300,300)
-    addCanvas(900,900)
+
+    for(const pr of pixelRatios){
+        addCanvas(baseWidth * pr, baseHeight * pr)
+    }
 }
 
 //check if socket io finished loading first

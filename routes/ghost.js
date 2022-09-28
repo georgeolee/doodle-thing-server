@@ -6,5 +6,4 @@ router.get('/', (req, res) => {
     res.render('headless')
     
     console.log('GHOSTY')
-    // res.status(200).send('getttttt')
 })

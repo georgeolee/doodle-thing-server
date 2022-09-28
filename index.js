@@ -12,7 +12,7 @@ import puppeteer from 'puppeteer'
 // const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 
-
+export const snapShots = {}
 
 
 
@@ -59,11 +59,13 @@ app.use('/ghost', ghostRouter)
 const server = http.createServer(app)
 
 //socket.io server
-const io = new Server(server, {
+export const io = new Server(server, {
     cors:{
         origin: process.env.CLIENT_URL,
     }
 })
+
+
 
 
 
@@ -80,6 +82,7 @@ io.on('connection', socket => {
     console.log(`new socket connection ----- id: ${socket.id}`)
     
     io.to(socket.id).emit('confirmation')
+
 
     socket.on('disconnect', () => {
         console.log(`socket disconnected ----- id: ${socket?.id}`)
@@ -103,6 +106,8 @@ io.on('connection', socket => {
 
     socket.on('ghost', says => {
         console.log(says)
+
+        socket.join('ghost room')
     })
 
     socket.on('ping', () => {
@@ -110,15 +115,20 @@ io.on('connection', socket => {
         io.to(socket.id).emit('pong')        
     })
 
-    socket.on('cdata', data => {
-        console.log(data)
-        console.log('\n\n\n')
-    })
+    // socket.on('cdata', (data, ack) => {
+    //     console.log('\n\n\n')
+    //     console.log(data)
+    //     console.log('\n\n\n')
+
+    //     ack?.(data)
+    // })
+
+    // socket.on()
 });
 
-setInterval(()=>{
-    io.emit('download', {width:300,height:300})
-}, 10000)
+// setInterval(()=>{
+//     io.emit('download', {width:300,height:300})
+// }, 10000)
 
 
 async function startGhost(){
