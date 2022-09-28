@@ -75,21 +75,6 @@ server.listen(process.env.PORT, () => {
 })
 
 
-//socket.io stuff
-
-// setInterval(async ()=>{    
-//     console.log('interval')
-//     const c = await io.allSockets()
-
-//     for(const id of c){
-//         console.log(id)
-//         console.log(`requesting client canvas data from socket id ${id}`)
-//         io.to(id).emit('request canvas data')
-//         break
-//     }
-    
-// }, 10000)
-
 io.on('connection', socket => {
 
     console.log(`new socket connection ----- id: ${socket.id}`)
@@ -125,9 +110,10 @@ io.on('connection', socket => {
         io.to(socket.id).emit('pong')        
     })
 
-    // socket.on('cdata', data => {
-    //     console.log(data)
-    // })
+    socket.on('cdata', data => {
+        console.log(data)
+        console.log('\n\n\n')
+    })
 });
 
 setInterval(()=>{
