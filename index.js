@@ -2,9 +2,21 @@ import express from 'express'
 import mongoose from 'mongoose'
 import { Server } from 'socket.io'
 import http from 'http'
-import * as path from 'path'
-
 import puppeteer from 'puppeteer'
+
+// import * as path from 'path'
+
+//__dirname & __filename fix for es module syntax
+// import url from 'url'
+// const __filename = url.fileURLToPath(import.meta.url)
+// const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
+
+
+
+
+
+
+
 
 //dotenv import & config – skip for production version
 if(process.env.NODE_ENV !== 'production'){
@@ -23,18 +35,15 @@ db.on('error', error => console.log(error))
 db.once('open', () => console.log('connected to mongodb'))
 
 
-
-
 const app = express()
-// app.use(bodyParser.json({
-//     limit:'1mb',
-//     type: '*/*'
-// }))
 
+//parse JSON request bodies
 app.use(express.json({
     limit: '1mb',
     type: '*/*'
 }))
+
+app.set('view engine', 'pug')
 
 //express routes
 import { router as indexRouter } from './routes/index.js'
@@ -46,8 +55,10 @@ app.use('/canvas', canvasRouter)
 app.use('/ghost', ghostRouter)
 
 
+//HTTP server
 const server = http.createServer(app)
 
+//socket.io server
 const io = new Server(server, {
     cors:{
         origin: process.env.CLIENT_URL,
@@ -58,25 +69,26 @@ const io = new Server(server, {
 
 server.listen(process.env.PORT, () => {
     console.log(`listening at ${server.address().address}:${server.address().port}`)
-    
+
+    //open up the headless client for canvas tracing
     startGhost()
 })
 
 
 //socket.io stuff
 
-setInterval(async ()=>{    
-    console.log('interval')
-    const c = await io.allSockets()
+// setInterval(async ()=>{    
+//     console.log('interval')
+//     const c = await io.allSockets()
 
-    for(const id of c){
-        console.log(id)
-        console.log(`requesting client canvas data from socket id ${id}`)
-        io.to(id).emit('request canvas data')
-        break
-    }
+//     for(const id of c){
+//         console.log(id)
+//         console.log(`requesting client canvas data from socket id ${id}`)
+//         io.to(id).emit('request canvas data')
+//         break
+//     }
     
-}, 10000)
+// }, 10000)
 
 io.on('connection', socket => {
 
@@ -97,18 +109,31 @@ io.on('connection', socket => {
         console.log(`click from ${socket.id}: ${date}`)
     })
 
-    
 
     socket.on('pointerState', data => {
         socket.broadcast.emit('pointerState', data)
 
-        // doodler.consumePointerStates(JSON.parse(data))
+        //send to clients & ghost client
     })
 
-    // setTimeout(() => {
-    //     io.to(socket.id).emit('request canvas data')
-    // }, 4000)
+    socket.on('ghost', says => {
+        console.log(says)
+    })
+
+    socket.on('ping', () => {
+        console.log(`ping from socket id ${socket.id}`)
+        io.to(socket.id).emit('pong')        
+    })
+
+    // socket.on('cdata', data => {
+    //     console.log(data)
+    // })
 });
+
+setInterval(()=>{
+    io.emit('download', {width:300,height:300})
+}, 10000)
+
 
 async function startGhost(){
     const url = `http://localhost:${process.env.PORT}/ghost`
