@@ -65,15 +65,19 @@ function connect(){
         
         //trace pdata
         //WOOHOOOOOOOOOOOOOOO!! works for now
+
+        const data = JSON.parse(pdata)
+
         for(const d of doodlers){
-            d.consumePointerStates(JSON.parse(pdata))
+            d.consumePointerStates(data)
         }
     })
 
     socket.on('canvas request', (dimensions = {}, ack) => {
         const {width = baseWidth, height = baseHeight} = dimensions
         
-        const cnv = ghosts[width]?.[height]?.canvas ?? ghosts[baseWidth][baseHeight].canvas
+        // const cnv = ghosts[width]?.[height]?.canvas ?? ghosts[baseWidth][baseHeight].canvas
+        const cnv = ghosts[900]?.[900]?.canvas
 
         // console.log(cnv)
 
