@@ -1,83 +1,107 @@
 import express from 'express'
 import { CanvasData } from '../models/canvasData.js'
 
-import { io } from '../index.js'
+import { io, getCanvasTimeStamp } from '../index.js'
 
 export const router = express.Router()
 
-//db snapshots to remove, oldest first
-const removalQueue = []
+let canvasBuffer = null
+let bufferTimestamp = null
 
-//canvas snapshots, oldest first
-const recent = []
-
-const localSnapshotCount = 10
-
-
+//CORS
 router.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL)    
-
+    res.header('access-control-allow-origin', process.env.CLIENT_URL)    
     console.log(`${req.method}: ${req.originalUrl}`)
-
     next()
 })
 
+router.get('/timestamp', (req, res) => {
+    const ts = getCanvasTimeStamp()
+    res.header('access-control-expose-headers', 'x-timestamp')
+    res.header('content-type', 'text/plain')
+    res.header('x-timestamp', ts)
+    res.status(200).send(ts)
+})
 
-//add query params for requesting specific image size
-//get canvas snapshot route
+//HERE AND IN CANVAS.JSX
+
+//some kind of timestamp or hash 
+
+//some way to avoid render loop
+
 router.get('/', async (req, res) => {
-    res.header('Content-Type', 'application/json')
-    console.log('received /canvas GET request')
-
-
-    // io.to('ghost room').emit('canvas request')
-
     
-
-    //TODO - implement this
     const {width, height} = req.query
-    //if width || height .... prefer same dimensions
+    
+    const gs = await io.in('ghost room').fetchSockets()
+    const ghost = gs[gs.length - 1]
 
-    //io.to(ghost room).emit doesn't seem to work w/ acknowledge callback
-    // so ->
-    //get single ghost socket instance (should only be one anyway)
-    const ghost = (await io.in('ghost room').fetchSockets())[0]
+    console.log('blob get')
 
+    //TODO
+    // if(canvasBuffer && bufferTimestamp === getCanvasTimeStamp()){
+    //      clean buffer -> send cached version instead of pinging ghost
+    // }
 
     //TODO - timeout & error handling
     const ack = (err, data) => {
-        if(data && data.dataURL && data.width && data.height){
-            res.status(200).json(data)
+        console.log('blob ack')
+        
+        if(err){
+            console.log(err)            
+            res.status(500).send('error fetching blob')
         }else{
-            res.status(500).send('problem fetching canvas data')
+            
+            res.header('access-control-expose-headers', 'x-timestamp')
+            res.header('content-type', 'image/png')
+            res.header('x-timestamp', getCanvasTimeStamp())
+
+            console.log(res.getHeaders())
+            
+            res.status(200).send(Buffer.from(data, 'binary'))
         }
     }
 
-    ghost.emit('canvas request', {width, height}, ack)
-
-    // const sendCanvasJSON = data => {
-    //     try{
-    //         res.status(200).json(data)
-    //         console.log('sent canvas data')
-    //     }catch(e){
-    //         res.status(500).send('there was a problem retrieving canvas data')
-    //         console.log('error retrieving canvas data')
-    //         console.log(e)
-    //     }
-    // }
-
-    // io.once(`canvas ${width}x${height}`, )
-
-    // io.on
-
-    // io.once('one-off', () => console.log(`RANDO ${Math.round(Math.random() * 100)}`))
-
-
-    // res.status(202).send()
-
-    // const snapshot = recent.length ? {...recent[recent.length - 1]} : {'empty': true}
-
-    // res.json(snapshot)
-    // console.log('sent json ?')
+    
+    ghost.emit('blob', {width, height}, ack)
+    console.log('blob emit')
 })
+
+// //add query params for requesting specific image size
+// //get canvas snapshot route
+// router.get('/', async (req, res) => {
+//     res.setHeader('Content-Type', 'application/json')    
+
+//     console.log('received /canvas GET request')
+
+
+//     // io.to('ghost room').emit('canvas request')
+
+    
+
+//     //TODO - implement this
+//     const {width, height} = req.query
+//     //if width || height .... prefer same dimensions
+
+//     //io.to(ghost room).emit doesn't seem to work w/ acknowledge callback
+//     // so ->
+//     //get single ghost socket instance 
+//     //should only be 1 in production, but this grabs newest if opening in browser window for testing
+//     const gs = await io.in('ghost room').fetchSockets()
+//     const ghost = gs[gs.length - 1]
+
+
+//     //TODO - timeout & error handling
+//     const ack = (err, data) => {
+//         if(data && data.dataURL && data.width && data.height){
+//             res.status(200).json(data)
+//         }else{
+//             res.status(500).send('problem fetching canvas data')
+//         }
+//     }
+
+//     ghost.emit('canvas request', {width, height}, ack)
+
+
+// })
 

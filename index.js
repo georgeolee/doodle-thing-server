@@ -14,7 +14,11 @@ import puppeteer from 'puppeteer'
 
 export const snapShots = {}
 
+let timestamp = Date.now().toString();
 
+export function getCanvasTimeStamp(){
+    return timestamp
+}
 
 
 
@@ -39,7 +43,7 @@ const app = express()
 
 //parse JSON request bodies
 app.use(express.json({
-    limit: '1mb',
+    limit: '10mb',
     type: '*/*'
 }))
 
@@ -65,8 +69,10 @@ export const io = new Server(server, {
     }
 })
 
+//TODO
+//(client side) move device pixel ration logic outside of Doodler and into react app drawingsettings logic, bc ghost client won't change device width
 
-
+//look into sending binary instead of base64
 
 
 server.listen(process.env.PORT, () => {
@@ -108,12 +114,17 @@ io.on('connection', socket => {
         console.log(says)
 
         socket.join('ghost room')
+
+        socket.on('timestamp', ts => {
+            timestamp = ts
+        })
     })
 
     socket.on('ping', () => {
         console.log(`ping from socket id ${socket.id}`)
         io.to(socket.id).emit('pong')        
     })
+
 
     // socket.on('cdata', (data, ack) => {
     //     console.log('\n\n\n')

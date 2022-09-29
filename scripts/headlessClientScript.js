@@ -51,6 +51,7 @@ function connect(){
     console.log('connect')
 
     socket = io(`http://localhost:${PORT}`, {transports: ['websocket', 'polling']})
+    
 
     socket.on('confirmation', () => {
         console.log('connected to server!')
@@ -70,21 +71,36 @@ function connect(){
 
         for(const d of doodlers){
             d.consumePointerStates(data)
-        }
+        }       
+        
+        socket.emit('timestamp', Date.now().toString())
+
     })
 
     socket.on('canvas request', (dimensions = {}, ack) => {
         const {width = baseWidth, height = baseHeight} = dimensions
         
         const cnv = (ghosts[width]?.[height]?.canvas) ?? ghosts[baseWidth][baseHeight].canvas
-        // const cnv = ghosts[900]?.[900]?.canvas
-
-        // console.log(cnv)
 
         const dataURL = cnv.toDataURL()
         // console.log(dataURL)
 
         ack(null, {width, height,dataURL, timestamp: Date.now()})        
+    })
+
+    socket.on('blob', async (dimensions = {}, ack) => {
+        try{
+            const {width = baseWidth, height = baseHeight} = dimensions
+            const cnv = (ghosts[width]?.[height]?.canvas) ?? ghosts[baseWidth][baseHeight].canvas
+            await cnv.toBlob(async blob => {
+                
+                //seems like socket.io sends blob just fine w/o converting to arrayBuffer
+                ack(null, blob)    
+            })
+
+        }catch(e){
+            ack(e, null)
+        }                
     })
 
     
