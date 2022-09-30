@@ -49,7 +49,8 @@ router.get('/', async (req, res) => {
         
         if(err){
             console.log(err)            
-            res.status(500).send('error fetching blob')
+            
+            res.status(500).send(`error fetching blob; | ${err.name}: ${err.message}`)
         }else{
             
             res.header('access-control-expose-headers', 'x-timestamp')
