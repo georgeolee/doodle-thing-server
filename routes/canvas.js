@@ -31,8 +31,10 @@ router.get('/timestamp', (req, res) => {
 
 router.get('/', async (req, res) => {
     
-    const {width, height} = req.query
+    // const {width, height} = req.query
+    const {width, height} = {width: 300, height: 300}
     
+    //get latest ghost socket instance (should only be 1 running on puppeteer unless debugging locally in browser window)
     const gs = await io.in('ghost room').fetchSockets()
     const ghost = gs[gs.length - 1]
 
@@ -67,42 +69,3 @@ router.get('/', async (req, res) => {
     ghost.emit('blob', {width, height}, ack)
     console.log('blob emit')
 })
-
-// //add query params for requesting specific image size
-// //get canvas snapshot route
-// router.get('/', async (req, res) => {
-//     res.setHeader('Content-Type', 'application/json')    
-
-//     console.log('received /canvas GET request')
-
-
-//     // io.to('ghost room').emit('canvas request')
-
-    
-
-//     //TODO - implement this
-//     const {width, height} = req.query
-//     //if width || height .... prefer same dimensions
-
-//     //io.to(ghost room).emit doesn't seem to work w/ acknowledge callback
-//     // so ->
-//     //get single ghost socket instance 
-//     //should only be 1 in production, but this grabs newest if opening in browser window for testing
-//     const gs = await io.in('ghost room').fetchSockets()
-//     const ghost = gs[gs.length - 1]
-
-
-//     //TODO - timeout & error handling
-//     const ack = (err, data) => {
-//         if(data && data.dataURL && data.width && data.height){
-//             res.status(200).json(data)
-//         }else{
-//             res.status(500).send('problem fetching canvas data')
-//         }
-//     }
-
-//     ghost.emit('canvas request', {width, height}, ack)
-
-
-// })
-
