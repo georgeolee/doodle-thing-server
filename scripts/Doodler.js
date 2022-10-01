@@ -55,6 +55,7 @@ class Doodler{
 
             
             if(p.last?.isPressed){
+                ctx.lineCap = 'round'
                 ctx.moveTo(...this.scaleXY(cnv, p.xNorm, p.yNorm))
                 ctx.lineTo(...this.scaleXY(cnv, p.last.xNorm ?? p.xNorm, p.last.yNorm ?? p.yNorm))
                 ctx.stroke()
