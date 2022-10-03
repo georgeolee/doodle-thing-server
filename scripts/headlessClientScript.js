@@ -70,7 +70,7 @@ function connect(){
         const data = JSON.parse(pdata)
 
         for(const d of doodlers){
-            d.consumePointerStates(data)
+            d.consumeDrawingData(data)
         }       
         
         socket.emit('timestamp', Date.now().toString())

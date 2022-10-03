@@ -110,6 +110,7 @@ io.on('connection', socket => {
         //send to clients & ghost client
     })
 
+    //puppeteer client connect
     socket.on('ghost', says => {
         console.log(says)
 
@@ -118,7 +119,13 @@ io.on('connection', socket => {
         socket.on('timestamp', ts => {
             timestamp = ts
         })
+        
     })
+
+    // //client connect
+    // socket.on('user', () => {
+    //     socket.join('user room')
+    // })
 
     socket.on('ping', () => {
         console.log(`ping from socket id ${socket.id}`)

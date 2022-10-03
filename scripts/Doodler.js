@@ -1,47 +1,50 @@
 /*non-module version for including w/ headless pug template*/
+
+/**
+     * 
+     * @param  {...{
+ *  xNorm:number,
+ *  yNorm:number,
+ *  isPressed:boolean,
+ *  last: {
+ *      xNorm:number,
+ *      yNorm:number,
+ *      isPressed:boolean,
+ * },
+ *  drawingSettings:{
+ *      color: string,
+ *      lineWidth: number,
+ *      eraser: boolean,
+ *  }      
+ * } drawingData 
+ */
 class Doodler{
 
     cnvRef    
-    strokeStyle
-    lineWidth
 
     constructor(cnvRef){
         this.cnvRef = cnvRef  
     }
 
-    getCanvas(){
+    getCanvasContext(){
         const cnv = this.cnvRef['getContext'] ? this.cnvRef : this.cnvRef.current        
         return [cnv, cnv.getContext('2d')]
     }
 
-    getDataURL(){
-        const [cnv,] = this.getCanvas()
-        return cnv.toDataURL()
-    }
-
-    line(x0,y0,x1,y1){
-        const [, ctx] = this.getCanvas()
-           
-        ctx.beginPath()
-        ctx.moveTo(x0,y0)
-        ctx.moveTo(x1,y1)
-        ctx.stroke()
-    }
-
-    consumePointerStates(...pointerStates){
-        const [cnv, ctx] = this.getCanvas()
+    consumeDrawingData(...drawingData){
+        const [cnv, ctx] = this.getCanvasContext()
         // ctx.imageSmoothingEnabled = false
         ctx.beginPath()
 
         //right now draws newest first
         //not a prob if only one pstate, but otherwise will reverse overlap order?
         //change
-        for(let i = pointerStates.length - 1; i >= 0; i--){
-            const p = pointerStates[i]
+        for(let i = drawingData.length - 1; i >= 0; i--){
+            const p = drawingData[i]
             if(!p.isPressed) continue
             
                         
-            if(p.drawingSettings.color !== 'erase'){
+            if(!p.drawingSettings.eraser){
                 //color over
                 ctx.globalCompositeOperation = 'source-over'
                 ctx.strokeStyle = p.drawingSettings.color
