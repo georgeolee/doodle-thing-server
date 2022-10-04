@@ -104,8 +104,8 @@ io.on('connection', socket => {
     })
 
 
-    socket.on('pointerState', data => {
-        socket.broadcast.emit('pointerState', data)
+    socket.on('drawingData', data => {
+        socket.broadcast.emit('drawingData', data)
 
         //send to clients & ghost client
     })

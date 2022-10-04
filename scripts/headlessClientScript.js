@@ -62,7 +62,7 @@ function connect(){
     socket.on('pong', () => console.log('YAY!'))
 
     //process drawing data (not just pointer info -> rename!!)
-    socket.on('pointerState', pdata => {
+    socket.on('drawingData', pdata => {
         
         //trace pdata
         //WOOHOOOOOOOOOOOOOOO!! works for now
