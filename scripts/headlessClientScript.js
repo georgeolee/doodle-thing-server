@@ -59,40 +59,27 @@ function connect(){
         console.log(`socket id: ${socket.id}`)        
     })
 
-    socket.on('pong', () => console.log('YAY!'))
+    // socket.on('pong', () => console.log('YAY!'))
 
-    //process drawing data (not just pointer info -> rename!!)
-    socket.on('drawingData', pdata => {
-        
-        //trace pdata
-        //WOOHOOOOOOOOOOOOOOO!! works for now
-
+    //process drawing data coming in from other sockets
+    socket.on('drawingData', pdata => {        
         const data = JSON.parse(pdata)
 
         for(const d of doodlers){
             d.consumeDrawingData(data)
         }       
         
+        //update timestamp
         socket.emit('timestamp', Date.now().toString())
 
     })
 
-    socket.on('canvas request', (dimensions = {}, ack) => {
-        const {width = baseWidth, height = baseHeight} = dimensions
-        
-        const cnv = (ghosts[width]?.[height]?.canvas) ?? ghosts[baseWidth][baseHeight].canvas
 
-        const dataURL = cnv.toDataURL()
-        // console.log(dataURL)
-
-        ack(null, {width, height,dataURL, timestamp: Date.now()})        
-    })
-
-    socket.on('blob', async (dimensions = {}, ack) => {
+    socket.on('blob', (dimensions = {}, ack) => {
         try{
             const {width = baseWidth, height = baseHeight} = dimensions
             const cnv = (ghosts[width]?.[height]?.canvas) ?? ghosts[baseWidth][baseHeight].canvas
-            await cnv.toBlob(async blob => {
+            cnv.toBlob(blob => {
                 
                 //seems like socket.io sends blob just fine w/o converting to arrayBuffer
                 ack(null, blob)    

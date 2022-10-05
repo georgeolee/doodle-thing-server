@@ -1,20 +1,20 @@
 import mongoose from "mongoose";
 
-const canvasDataSchema = new mongoose.Schema({
+const canvasSchema = new mongoose.Schema({
     width: {
         type: Number
     },
     height: {
         type: Number
     },
-    dataURL: {
-        type: String,
+    buffer: {
+        type: Buffer,
         required: true
     },
     timestamp: {
-        type: Number,
+        type: String,
         required: true
     }
 })
 
-export const CanvasData = mongoose.model('CanvasData', canvasDataSchema)
+export const Canvas = mongoose.model('Canvas', canvasSchema)

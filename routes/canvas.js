@@ -1,5 +1,5 @@
 import express from 'express'
-import { CanvasData } from '../models/canvasData.js'
+import { Canvas } from '../models/canvas.js'
 
 import { io, getCanvasTimeStamp } from '../index.js'
 
@@ -7,6 +7,9 @@ export const router = express.Router()
 
 let canvasBuffer = null
 let bufferTimestamp = null
+
+let lastSave = bufferTimestamp;
+let isSaving = false;
 
 //CORS
 router.use((req, res, next) => {
@@ -38,39 +41,49 @@ router.get('/', async (req, res) => {
         return console.log('no timestamp change ---- sending cached canvas buffer');
     }
 
-
-    //get latest ghost socket instance (should only be 1 running on puppeteer unless debugging locally in browser window)
-    const gs = await io.in('ghost room').fetchSockets()
-    const ghost = gs[gs.length - 1]
-
-    console.log('blob get')
-
-    //TODO - timeout & error handling
-    const ack = (err, data) => {
-        console.log('blob ack')
-        
-        if(err){
-            console.log(err)            
-            
-            res.status(500).send(`error fetching blob; | ${err.name}: ${err.message}`)
-        }else{
-            
+    getCanvasBlob()
+        .then(blob => {
+            const buffer = Buffer.from(blob, 'binary')
             const timestamp = getCanvasTimeStamp()
-            const buffer = Buffer.from(data, 'binary')
 
-            sendCanvasBinary(res, buffer, timestamp)
+            console.log('got canvas blob')
+            sendCanvasBinary(res, buffer, timestamp);
+        })
+        .catch(e => {
+            console.log('error getting blob',e)
+            res.status(500).send('error getting canvas data')
+        })
 
-
-            canvasBuffer = buffer;
-            bufferTimestamp = timestamp;
-        }
-    }
-
-    
-    ghost.emit('blob', {width, height}, ack)
-    console.log('blob emit')
 })
 
+async function getCanvasBlob(dimensions = {}){
+    
+    //request specific dimensions or default
+    const {width, height} = dimensions;
+
+    const blobPromise = new Promise(async (resolve, reject) => {        
+
+        let ghost;
+
+        try{
+            //get most recent (if more than one, ie when testing) local socket instance
+            const gs = await io.in('ghost room').fetchSockets();
+            ghost = gs[gs.length - 1]
+        }catch(e){
+            reject(e);
+        }
+
+        //pass acknowledge callback to ghost client
+        const ack = (error, blob) => {
+            if(error) reject(error);
+            else resolve(blob);
+        }
+
+        ghost.emit('blob', {width, height}, ack)
+    });    
+
+    return blobPromise;
+}
 
 function sendCanvasBinary(res, buffer, timestamp){
     res.header('access-control-expose-headers', 'x-timestamp')
@@ -78,3 +91,46 @@ function sendCanvasBinary(res, buffer, timestamp){
     res.header('x-timestamp', timestamp)                
     res.status(200).send(buffer)
 }
+
+// async function saveCanvasToDB(fields){
+
+//     const {timestamp, width, height} = fields;
+    
+//     try{
+
+//         if(isSaving) throw new Error('save operation already in progress')
+//         isSaving = true;
+
+//         const canvas = new Canvas({...fields});
+
+//         await canvas.save();
+//         console.log('saved canvas to db');
+
+//         lastSave = timestamp;
+
+//         const id = canvas.id;
+
+//         const results = await Canvas.find({
+//                 _id: {$ne: id},
+//                 width,
+//                 height
+//             }, '_id timestamp').exec()
+
+//         console.log(results);
+        
+//         isSaving = false;
+
+//     }catch(e){
+//         console.log(e)
+//     }
+// }
+
+// setInterval(() => {
+//     if(!isSaving && canvasBuffer && lastSave !== bufferTimestamp){
+//         saveCanvasToDB({
+//             buffer: canvasBuffer,
+//             timestamp: bufferTimestamp,
+//         })
+//     }
+// }, 10000)
+

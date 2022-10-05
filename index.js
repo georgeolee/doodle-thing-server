@@ -30,7 +30,7 @@ if(process.env.NODE_ENV !== 'production'){
 }
 
 //MONGODB
-import {CanvasData} from './models/canvasData.js'
+import {Canvas} from './models/canvas.js'
 
 //connect to mongodb
 mongoose.connect(process.env.DATABASE_URL)
@@ -116,6 +116,7 @@ io.on('connection', socket => {
 
         socket.join('ghost room')
 
+        //timestamp update from puppeteer client
         socket.on('timestamp', ts => {
             timestamp = ts
         })
