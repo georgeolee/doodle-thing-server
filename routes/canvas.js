@@ -15,6 +15,8 @@ router.use((req, res, next) => {
     next()
 })
 
+
+//canvas timestamp - clients can compare to see if canvas update is necessary
 router.get('/timestamp', (req, res) => {
     const ts = getCanvasTimeStamp()
     res.header('access-control-expose-headers', 'x-timestamp')
@@ -23,27 +25,25 @@ router.get('/timestamp', (req, res) => {
     res.status(200).send(ts)
 })
 
-//HERE AND IN CANVAS.JSX
-
-//some kind of timestamp or hash 
-
-//some way to avoid render loop
-
+//get canvas binary data
 router.get('/', async (req, res) => {
     
     // const {width, height} = req.query
     const {width, height} = {width: 300, height: 300}
     
+
+    //cached buffer is up to date
+    if(bufferTimestamp === getCanvasTimeStamp() && canvasBuffer){
+        sendCanvasBinary(res, canvasBuffer, bufferTimestamp);
+        return console.log('no timestamp change ---- sending cached canvas buffer');
+    }
+
+
     //get latest ghost socket instance (should only be 1 running on puppeteer unless debugging locally in browser window)
     const gs = await io.in('ghost room').fetchSockets()
     const ghost = gs[gs.length - 1]
 
     console.log('blob get')
-
-    //TODO
-    // if(canvasBuffer && bufferTimestamp === getCanvasTimeStamp()){
-    //      clean buffer -> send cached version instead of pinging ghost
-    // }
 
     //TODO - timeout & error handling
     const ack = (err, data) => {
@@ -55,13 +55,14 @@ router.get('/', async (req, res) => {
             res.status(500).send(`error fetching blob; | ${err.name}: ${err.message}`)
         }else{
             
-            res.header('access-control-expose-headers', 'x-timestamp')
-            res.header('content-type', 'image/png')
-            res.header('x-timestamp', getCanvasTimeStamp())
+            const timestamp = getCanvasTimeStamp()
+            const buffer = Buffer.from(data, 'binary')
 
-            console.log(res.getHeaders())
-            
-            res.status(200).send(Buffer.from(data, 'binary'))
+            sendCanvasBinary(res, buffer, timestamp)
+
+
+            canvasBuffer = buffer;
+            bufferTimestamp = timestamp;
         }
     }
 
@@ -69,3 +70,11 @@ router.get('/', async (req, res) => {
     ghost.emit('blob', {width, height}, ack)
     console.log('blob emit')
 })
+
+
+function sendCanvasBinary(res, buffer, timestamp){
+    res.header('access-control-expose-headers', 'x-timestamp')
+    res.header('content-type', 'image/png')
+    res.header('x-timestamp', timestamp)                
+    res.status(200).send(buffer)
+}
