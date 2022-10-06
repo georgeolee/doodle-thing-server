@@ -155,7 +155,7 @@ async function startGhost(){
     const url = `http://localhost:${process.env.PORT}/ghost`
 
     console.log(url)
-    const browser = await puppeteer.launch({ args: ['--no-sandbox'], dumpio: true })
+    const browser = await puppeteer.launch({ args: ['--no-sandbox'], dumpio: process.env.PUPPETEER_LOG })
     const page = await browser.newPage()
     await page.goto(url)
 }

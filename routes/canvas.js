@@ -118,6 +118,10 @@ function sendCanvasBinary(res, buffer, timestamp){
 
     const stream = Readable.from(buffer)
 
+    stream.on('close', () => {
+        console.log(`sendCanvasBinary: stream closed`);
+    })
+
     stream.on('error', e => {
         res.status(500).send('server error')
         stream?.destroy()
