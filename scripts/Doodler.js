@@ -1,5 +1,7 @@
 /*non-module version for including w/ headless pug template*/
 
+
+
 /**
      * 
      * @param  {...{
@@ -20,10 +22,13 @@
  */
 class Doodler{
 
-    cnvRef    
+    cnvRef;    
+    pixelRatio;
 
-    constructor(cnvRef){
+    constructor(cnvRef, pixelRatio = devicePixelRatio){
         this.cnvRef = cnvRef  
+
+        this.pixelRatio = pixelRatio;
     }
 
     getCanvasContext(){
@@ -54,7 +59,7 @@ class Doodler{
                 ctx.globalCompositeOperation = 'destination-out'
             }
             
-            ctx.lineWidth = p.drawingSettings.lineWidth * devicePixelRatio
+            ctx.lineWidth = p.drawingSettings.lineWidth * this.getPixelRatio()
 
             
             if(p.last?.isPressed){
@@ -72,5 +77,9 @@ class Doodler{
 
     scaleXY(cnv, normalizedX, normalizedY){    
         return [normalizedX * cnv.width, normalizedY * cnv.height]
+    }
+
+    getPixelRatio(){
+        return this.pixelRatio ?? devicePixelRatio;
     }
 }
