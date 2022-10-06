@@ -41,6 +41,12 @@ router.get('/timestamp', (req, res) => {
 //get canvas binary data
 router.get('/', async (req, res) => {
     
+    const start = Date.now()
+
+    const mils = (message = '') => {
+        console.log(`${message}-------${Date.now() - start}ms since GET request received`)
+    }
+
     const {width, height} = req.query
     // const {width, height} = {width: 300, height: 300}
     
@@ -53,17 +59,20 @@ router.get('/', async (req, res) => {
 
     getCanvasBlob({width, height})
         .then(blob => {
+            console.log(`got canvas blob; length: ${blob.length}`)
+            mils('blob success')
+
             const buffer = Buffer.from(blob, 'binary')
             const timestamp = getCanvasTimeStamp()
 
             canvasBuffer = buffer;
             bufferTimestamp = timestamp;
 
-            console.log('got canvas blob')
             sendCanvasBinary(res, buffer, timestamp);                        
 
         })
         .catch(e => {
+            mils('blob error')
             console.log('error getting blob',e)
             res.status(500).send('error getting canvas data')
         })
