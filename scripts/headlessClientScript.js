@@ -77,15 +77,23 @@ function connect(){
 
     socket.on('blob', (dimensions = {}, ack) => {
         try{
+            const start = Date.now()
+
+            console.log(`headless client: blob req received`)
+
             const {width = baseWidth, height = baseHeight} = dimensions
             const cnv = (ghosts[width]?.[height]?.canvas) ?? ghosts[baseWidth][baseHeight].canvas
             cnv.toBlob(blob => {
-                
+                console.log(`headless client: generated blob in ${Date.now() - start}ms; blob size: ${blob.size}`)
                 //seems like socket.io sends blob just fine w/o converting to arrayBuffer
+                
+                console.log(`headless client: invoking ack callback with blob...`)
                 ack(null, blob)    
             })
 
         }catch(e){
+            console.log(`headless client: error ${Date.now() - start}ms after receiving blob request`)
+            console.log(`headless client: invoking ack callback with error...`)
             ack(e, null)
         }                
     })
@@ -106,7 +114,7 @@ function connect(){
 
     setInterval(() => {
         socket.emit('ping')
-    }, 1000)
+    }, 10000)
 }
 
 function runHeadlessClient(){
