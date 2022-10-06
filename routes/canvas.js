@@ -4,26 +4,35 @@ import { Canvas } from '../models/canvas.js'
 import { io, getCanvasTimeStamp } from '../index.js'
 
 import {Readable} from 'stream'
+import mongoose from 'mongoose'
 
 export const router = express.Router()
 
-let canvasBuffer = null
-let bufferTimestamp = null
+import {CanvasCache} from '../CanvasCache.js'
 
-let lastSave = bufferTimestamp;
+const cache = new CanvasCache();
+
+
+
+
+let lastSave = null;
+
 let isSaving = false;
 
 //CORS
 router.use((req, res, next) => {
-    res.header('access-control-allow-origin', process.env.CLIENT_URL)    
+    res.header('access-control-allow-origin', process.env.CLIENT_URL)  
+    res.header('access-control-expose-headers', 'x-timestamp')  
     console.log(`${req.method}: ${req.originalUrl}`)
     next()
 })
 
-//errors
-// router.use((err, req, res, next) => {
 
-// })
+// errors
+router.use((err, req, res, next) => {
+    console.log(err)
+    res.status(500).send('whoops. something weird happened')
+})
 
 
 //look into ---> res.write (streaming big canvas buffer)?
@@ -32,7 +41,6 @@ router.use((req, res, next) => {
 //canvas timestamp - clients can compare to see if canvas update is necessary
 router.get('/timestamp', (req, res) => {
     const ts = getCanvasTimeStamp()
-    res.header('access-control-expose-headers', 'x-timestamp')
     res.header('content-type', 'text/plain')
     res.header('x-timestamp', ts)
     res.status(200).send(ts)
@@ -47,15 +55,16 @@ router.get('/', async (req, res) => {
         console.log(`${message}-------${Date.now() - start}ms since GET request received`)
     }
 
-    const {width, height} = req.query
-    // const {width, height} = {width: 300, height: 300}
+    //get query params
+    const {width = 300, height = 300} = req.query
     
-
-    //cached buffer is up to date
-    if(bufferTimestamp === getCanvasTimeStamp() && canvasBuffer){
-        sendCanvasBinary(res, canvasBuffer, bufferTimestamp);
+    //check if cached buffer is up to date
+    const cached = cache.getEntry(width, height);
+    if(cached != null && cached.isStale === false){
+        sendCanvasBinary(res, cached.buffer, cached.timestamp);
         return console.log('no timestamp change ---- sending cached canvas buffer');
     }
+
 
     getCanvasBlob({width, height})
         .then(blob => {
@@ -65,9 +74,10 @@ router.get('/', async (req, res) => {
             const buffer = Buffer.from(blob, 'binary')
             const timestamp = getCanvasTimeStamp()
 
-            canvasBuffer = buffer;
-            bufferTimestamp = timestamp;
+            //update the cached values
+            cache.setEntry({buffer, width, height, timestamp})
 
+            //send canvas data to client
             sendCanvasBinary(res, buffer, timestamp);                        
 
         })
@@ -96,7 +106,7 @@ async function getCanvasBlob(dimensions = {}){
             reject(e);
         }
 
-        //pass acknowledge callback to ghost client
+        //pass acknowledge callback to ghost client socket
         const ack = (error, blob) => {
             if(error) reject(error);
             else resolve(blob);
@@ -109,7 +119,6 @@ async function getCanvasBlob(dimensions = {}){
 }
 
 function sendCanvasBinary(res, buffer, timestamp){
-    res.header('access-control-expose-headers', 'x-timestamp')
     res.header('content-type', 'image/png')
     res.header('content-length', buffer.length)
     res.header('x-timestamp', timestamp)                
@@ -132,38 +141,53 @@ function sendCanvasBinary(res, buffer, timestamp){
     stream.pipe(res);
 }
 
-// async function saveCanvasToDB(fields){
+async function updateDBCanvas(fields){
 
-//     const {timestamp, width, height} = fields;
+    const {timestamp, width, height} = fields;
     
-//     try{
+    try{
 
-//         if(isSaving) throw new Error('save operation already in progress')
-//         isSaving = true;
+        if(isSaving) throw new Error('save operation already in progress')
+        isSaving = true;
 
-//         const canvas = new Canvas({...fields});
+        const canvas = new Canvas({...fields});
 
-//         await canvas.save();
-//         console.log('saved canvas to db');
+        await canvas.save();
+        console.log('saved canvas to db');
 
-//         lastSave = timestamp;
+        lastSave = timestamp;
 
-//         const id = canvas.id;
+        const results = await Canvas.find({width,height})
+                                    .select('timestamp')
+                                    .sort({timestamp: 1})
+                                    .collation({locale: 'en_US', numericOrdering: true})
+                                    .exec()
 
-//         const results = await Canvas.find({
-//                 _id: {$ne: id},
-//                 width,
-//                 height
-//             }, '_id timestamp').exec()
-
-//         console.log(results);
+        console.log(results);
         
-//         isSaving = false;
+        isSaving = false;
 
-//     }catch(e){
-//         console.log(e)
-//     }
-// }
+    }catch(e){
+        console.log(e)
+    }
+}
+
+
+function wait(mils){
+    return new Promise((resolve, ) => {
+        setTimeout(resolve, mils);
+    })
+}
+
+async function dbUpdateLoop(){
+    const sleepTime = 10*60*1000
+    while(true){
+        
+        await wait(sleepTime)
+
+
+    }
+}
 
 // setInterval(() => {
 //     if(!isSaving && canvasBuffer && lastSave !== bufferTimestamp){
