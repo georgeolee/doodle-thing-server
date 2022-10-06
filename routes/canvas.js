@@ -3,6 +3,8 @@ import { Canvas } from '../models/canvas.js'
 
 import { io, getCanvasTimeStamp } from '../index.js'
 
+import {Readable} from 'stream'
+
 export const router = express.Router()
 
 let canvasBuffer = null
@@ -17,6 +19,14 @@ router.use((req, res, next) => {
     console.log(`${req.method}: ${req.originalUrl}`)
     next()
 })
+
+//errors
+// router.use((err, req, res, next) => {
+
+// })
+
+
+//look into ---> res.write (streaming big canvas buffer)?
 
 
 //canvas timestamp - clients can compare to see if canvas update is necessary
@@ -41,13 +51,14 @@ router.get('/', async (req, res) => {
         return console.log('no timestamp change ---- sending cached canvas buffer');
     }
 
-    getCanvasBlob()
+    getCanvasBlob({width, height})
         .then(blob => {
             const buffer = Buffer.from(blob, 'binary')
             const timestamp = getCanvasTimeStamp()
 
             console.log('got canvas blob')
-            sendCanvasBinary(res, buffer, timestamp);
+            sendCanvasBinary(res, buffer, timestamp);                        
+
         })
         .catch(e => {
             console.log('error getting blob',e)
@@ -88,8 +99,21 @@ async function getCanvasBlob(dimensions = {}){
 function sendCanvasBinary(res, buffer, timestamp){
     res.header('access-control-expose-headers', 'x-timestamp')
     res.header('content-type', 'image/png')
+    res.header('content-length', buffer.length)
     res.header('x-timestamp', timestamp)                
-    res.status(200).send(buffer)
+    // res.status(200).send(buffer)
+
+
+    const stream = Readable.from(buffer)
+
+    stream.on('error', e => {
+        res.status(500).send('server error')
+        stream?.destroy()
+        next(e)
+    })
+
+    res.status(200);
+    stream.pipe(res);
 }
 
 // async function saveCanvasToDB(fields){
