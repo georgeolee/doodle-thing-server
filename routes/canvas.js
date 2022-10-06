@@ -41,8 +41,8 @@ router.get('/timestamp', (req, res) => {
 //get canvas binary data
 router.get('/', async (req, res) => {
     
-    // const {width, height} = req.query
-    const {width, height} = {width: 300, height: 300}
+    const {width, height} = req.query
+    // const {width, height} = {width: 300, height: 300}
     
 
     //cached buffer is up to date
@@ -55,6 +55,9 @@ router.get('/', async (req, res) => {
         .then(blob => {
             const buffer = Buffer.from(blob, 'binary')
             const timestamp = getCanvasTimeStamp()
+
+            canvasBuffer = buffer;
+            bufferTimestamp = timestamp;
 
             console.log('got canvas blob')
             sendCanvasBinary(res, buffer, timestamp);                        
