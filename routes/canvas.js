@@ -1,7 +1,7 @@
 import express from 'express'
 import { Canvas } from '../models/canvas.js'
 
-import { io, getCanvasTimeStamp } from '../index.js'
+import { io, getCanvasTimeStamp, getGhostSocket } from '../index.js'
 
 import {Readable} from 'stream'
 import mongoose from 'mongoose'
@@ -22,7 +22,7 @@ let isSaving = false;
 //CORS
 router.use((req, res, next) => {
     res.header('access-control-allow-origin', process.env.CLIENT_URL)  
-    res.header('access-control-expose-headers', 'x-timestamp')  
+    res.header('access-control-expose-headers', 'x-timestamp, retry-after')  
     console.log(`${req.method}: ${req.originalUrl}`)
     next()
 })
@@ -35,15 +35,28 @@ router.use((err, req, res, next) => {
 })
 
 
-//look into ---> res.write (streaming big canvas buffer)?
-
-
 //canvas timestamp - clients can compare to see if canvas update is necessary
 router.get('/timestamp', (req, res) => {
     const ts = getCanvasTimeStamp()
     res.header('content-type', 'text/plain')
     res.header('x-timestamp', ts)
     res.status(200).send(ts)
+})
+
+//check ghost availability in case the dyno is just waking up
+router.use('/', async (req, res, next) => {
+    const ghost = await getGhostSocket()
+    
+    if(ghost != null){
+        console.log('canvas request - ghost ready')
+        next() //good to go
+    } 
+
+    else{   //puppeteer client still launching - tell client to retry after a few seconds
+        console.log('canvas request - ghost still waking up')
+        res.header('retry-after', '10')
+        res.status(503).send('still waking up')
+    }
 })
 
 //get canvas binary data
@@ -96,16 +109,8 @@ async function getCanvasBlob(dimensions = {}){
 
     const blobPromise = new Promise(async (resolve, reject) => {        
 
-        let ghost;
-
-        try{
-            //get most recent (if more than one, ie when testing) local socket instance
-            const gs = await io.in('ghost room').fetchSockets();
-            ghost = gs[gs.length - 1]
-        }catch(e){
-            reject(e);
-        }
-
+        const ghost = await getGhostSocket();
+        
         //pass acknowledge callback to ghost client socket
         const ack = (error, blob) => {
             if(error) reject(error);

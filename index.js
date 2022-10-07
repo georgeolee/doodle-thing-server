@@ -16,6 +16,8 @@ export const snapShots = {}
 
 let timestamp = Date.now().toString();
 
+
+
 export function getCanvasTimeStamp(){
     return timestamp
 }
@@ -70,10 +72,11 @@ export const io = new Server(server, {
     maxHttpBufferSize: 1e7
 })
 
-//TODO
-//(client side) move device pixel ration logic outside of Doodler and into react app drawingsettings logic, bc ghost client won't change device width
-
-//look into sending binary instead of base64
+//ghost client socket instance, or null
+export async function getGhostSocket(){    
+    const sockets = await io.in('ghost room').fetchSockets()    
+    return (sockets.length > 0) ? sockets[sockets.length - 1] : null  
+}
 
 
 server.listen(process.env.PORT, () => {
@@ -135,15 +138,6 @@ io.on('connection', socket => {
     })
 
 
-    // socket.on('cdata', (data, ack) => {
-    //     console.log('\n\n\n')
-    //     console.log(data)
-    //     console.log('\n\n\n')
-
-    //     ack?.(data)
-    // })
-
-    // socket.on()
 });
 
 // setInterval(()=>{
