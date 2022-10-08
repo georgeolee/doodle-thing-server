@@ -45,7 +45,7 @@ const app = express()
 
 //parse JSON request bodies
 app.use(express.json({
-    limit: '10mb',
+    limit: '100kb',
     type: '*/*'
 }))
 
@@ -105,6 +105,10 @@ io.on('connection', socket => {
 
     socket.on('click', date => {
         console.log(`click from ${socket.id}: ${date}`)
+
+        getGhostSocket()
+            .then(ghost => io.to(ghost.id).emit('download', {width:900,height:900}))
+            .catch()
     })
 
 
@@ -140,10 +144,6 @@ io.on('connection', socket => {
 
 });
 
-// setInterval(()=>{
-//     io.emit('download', {width:300,height:300})
-// }, 10000)
-
 
 async function startGhost(){
     const url = `http://localhost:${process.env.PORT}/ghost`
@@ -152,4 +152,11 @@ async function startGhost(){
     const browser = await puppeteer.launch({ args: ['--no-sandbox'], dumpio: process.env.PUPPETEER_LOG })
     const page = await browser.newPage()
     await page.goto(url)
+
+    // IMAGE DOWNLOAD TEST
+    // const client = await page.target().createCDPSession()
+    // await client.send('Page.setDownloadBehavior', {
+    //     behavior: 'allow',
+    //     downloadPath: './puppeteer/downloads'
+    // })
 }

@@ -104,16 +104,22 @@ function connect(){
     
     
 
-    // socket.on('download', options => {
-    //     const {width, height} = options
+    socket.on('download', options => {
+        const {width, height} = options
         
-    //     const cnv = ghosts[width]?.[height]?.canvas
+        const cnv = ghosts[width]?.[height]?.canvas
 
-    //     const data = cnv.toDataURL()
-    //     console.log(data)
+        cnv?.toBlob(blob => {
+            const url = URL.createObjectURL(blob)
 
-    //     socket.emit('cdata', data)
-    // })
+            const a = document.createElement('a')
+            a.href = url;
+            a.download = `canvas_${width}x${height}`
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(url)
+        })
+    })
 
     setInterval(() => {
         socket.emit('ping')

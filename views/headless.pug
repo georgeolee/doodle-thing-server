@@ -9,11 +9,11 @@ html(lang="en")
         script(async)
             | const PORT = #{process.env.PORT};
             | console.log(PORT);
-            include ../scripts/loadSocketIO.js             
+            include ../puppeteer/scripts/loadSocketIO.js             
 
     
         script(defer) 
-            include ../scripts/Doodler.js
-            include ../scripts/headlessClientScript.js
+            include ../puppeteer/scripts/Doodler.js
+            include ../puppeteer/scripts/headlessClientScript.js
     body 
         a(href="/") index
