@@ -26,13 +26,13 @@ function addCanvas(width, height){
     //create canvas element
     const canvas = document.createElement('canvas')
     
-    const pixelRatio = width / baseWidth;
+    const pixelRatio = Number(width) / baseWidth;
 
     const doodler = new Doodler(canvas, pixelRatio)
 
     canvas.style.display = 'none'
-    canvas.width = width
-    canvas.height = height
+    canvas.width = Number(width)
+    canvas.height = Number(height)
     canvas.getContext('2d')
     canvases.push(canvas)
     doodlers.push(doodler)

@@ -1,7 +1,7 @@
 import express from 'express'
-import { Canvas } from '../models/canvas.js'
 
-import { io, getCanvasTimeStamp, getGhostSocket } from '../index.js'
+
+import { getCanvasTimeStamp, getGhostSocket } from '../index.js'
 
 import {Readable} from 'stream'
 import mongoose from 'mongoose'
@@ -11,11 +11,26 @@ export const router = express.Router()
 import {CanvasCache} from '../CanvasCache.js'
 import { CanvasDBHandler } from '../CanvasDBHandler.js'
 
+// import PngQuant from 'pngquant'
+
 const cache = new CanvasCache();
 const canvasDB = new CanvasDBHandler();
 
-const db = mongoose.connection;
+//width, height
+const canvasSizes = {
+    300:[300],
+    600:[600],
+    900:[900]
+};
+
+//pngquant 
+// const pq = new PngQuant([128, '--speed', 11]); //128 colors, speed 11, pipe i/o
+
+
+
+
 //start database processes
+const db = mongoose.connection;
 db.once('open', async () => {
 
 
@@ -190,10 +205,13 @@ function sendCanvasBinary(res, buffer, timestamp){
     res.header('content-type', 'image/png')
     res.header('content-length', buffer.length)
     res.header('x-timestamp', timestamp)                
-    // res.status(200).send(buffer)
 
 
     const stream = Readable.from(buffer)
+
+    
+
+    stream.on('date', data => console.log(`on data in ${data.length} bytes`))
 
     stream.on('close', () => {
         console.log(`sendCanvasBinary: stream closed`);
@@ -205,8 +223,13 @@ function sendCanvasBinary(res, buffer, timestamp){
         next(e)
     })
 
-    res.status(200);
+    res.status(200)
     stream.pipe(res);
+
+    
+    // console.log('BUFFER LENGTH', buffer.length)
+
+    
 }
 
 
@@ -221,18 +244,10 @@ function wait(mils){
 
 //TODO
 
-//goal -> db timestamp should be up to date (or close)
-
-//atm:
-//canvas cache currently only updates on blob request
-//as written, db won't get updated if the cache is stale
-
-//should be
-    //a) comparing getCanvasTimeStamp() value to db timestamp to decide if update is required, and
-    //b) if need to update, check cache freshness to determine whether need to use [cached buffer OR getCanvasBlob] as buffer source for db entry
+//cleaner system for tracking canvas sizes -> where to keep?
 
 async function dbUpdateLoop(){
-    const sleepTime = 5*60*1000    //10 min interval
+    const sleepTime = 5*60*1000    // ms update interval
     while(true){
         
         await wait(sleepTime)
@@ -240,17 +255,51 @@ async function dbUpdateLoop(){
         console.log('db update in progress..')
         
         try{
-            await Promise.allSettled(
-                cache
-                    .getEntries()
-                    .filter(entry => (entry && !entry.isStale))
-                    .map(entry => canvasDB.updateDBCanvas(entry))
-            )
-            console.log('db update done..?')
+
+            const updates = []
+
+            const currentTimestamp = getCanvasTimeStamp();
+
+            for(const w of Object.keys(canvasSizes)){
+                for(const h of canvasSizes[w]){
+                    const [width, height] = [w.toString(), h.toString()];
+
+                    //skip if up to date
+                    if(canvasDB.getTimestampOf(width, height) === currentTimestamp) continue;
+
+                    const cached = cache.getEntry(width, height);
+
+                    let p, msg = `pushing canvas db update\t|\tsize: ${width} x ${height}\t|\tsource: `;                    
+
+                    //up to date cache entry
+                    if(cached?.isStale === false){
+                        p = canvasDB.updateDBCanvas(cached)
+                        msg += 'cache';
+                    }else{
+                        p = getCanvasBlob({width, height}).then(buffer => canvasDB.updateDBCanvas({width, height, buffer, timestamp: currentTimestamp}));                        
+                        msg += 'ghost';
+                    }
+
+                    updates.push(p);
+                    console.log(msg);
+                }
+            }
+
+            await Promise.allSettled(updates);
+
+            // await Promise.allSettled(
+            //     cache
+            //         .getEntries()
+            //         .filter(entry => (entry && !entry.isStale))
+            //         .map(entry => canvasDB.updateDBCanvas(entry))
+            // )
+            console.log('db update done')
         }catch(e){
             console.log('db update error', e)
         }
         
+
+        // await wait(sleepTime)
 
     }
 }

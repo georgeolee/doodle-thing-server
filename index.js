@@ -154,9 +154,9 @@ async function startGhost(){
     await page.goto(url)
 
     // IMAGE DOWNLOAD TEST
-    // const client = await page.target().createCDPSession()
-    // await client.send('Page.setDownloadBehavior', {
-    //     behavior: 'allow',
-    //     downloadPath: './puppeteer/downloads'
-    // })
+    const client = await page.target().createCDPSession()
+    await client.send('Page.setDownloadBehavior', {
+        behavior: 'allow',
+        downloadPath: './puppeteer/downloads'
+    })
 }
