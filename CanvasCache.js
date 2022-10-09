@@ -5,9 +5,12 @@ export class CanvasCache{
     cache;
     shelfLifeMillis;
 
+    trackedSizes;
+
     constructor(){
         this.cache = {}
         this.shelfLifeMillis = 0;
+        this.trackedSizes = []
     }
 
     // format key
@@ -17,7 +20,7 @@ export class CanvasCache{
 
     /**
      * (over)write a cache entry
-     * @param {{buffer:Buffer,width:number,height:number,timestamp:string}} fields 
+     * @param {{buffer:Buffer,width:string,height:string,timestamp:string}} fields 
      */
     setEntry(fields){
         const {buffer, width, height, timestamp} = fields;
@@ -29,9 +32,15 @@ export class CanvasCache{
                 typeof height !== 'string' || 
                 typeof timestamp !== 'string'
             ) throw new TypeError('CanvasCache.setEntry(): missing or invalid fields');
-            
-            this.cache[this.#key(width, height)] = fields;
 
+            const key = this.#key(width, height);
+
+            if(!this.cache[key]){
+                this.trackedSizes.push([width, height])
+            }
+
+            this.cache[key] = fields;
+            
         }catch(e){
             console.error(`${e.name}: ${e.message}`)
         } 
@@ -51,6 +60,10 @@ export class CanvasCache{
         const isStale = Number(getCanvasTimeStamp()) - Number(entry.timestamp) > this.shelfLifeMillis;
 
         return {...entry, isStale}
+    }
+
+    getEntries(){
+        return this.trackedSizes.map(size => this.getEntry(...size));
     }
 
 }

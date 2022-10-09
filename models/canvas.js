@@ -2,10 +2,12 @@ import mongoose from "mongoose";
 
 const canvasSchema = new mongoose.Schema({
     width: {
-        type: Number
+        type: String,
+        required: true
     },
     height: {
-        type: Number
+        type: String,
+        required: true
     },
     buffer: {
         type: Buffer,

@@ -102,6 +102,30 @@ function connect(){
     })
 
     
+    socket.on('load canvas', async (width, height, buffer, ack) => {
+        
+        try{
+            if(!ghosts[width]?.[height]) addCanvas(width, height);
+
+            const ctx = ghosts[width][height].canvas.getContext('2d');
+
+
+            const bmp = await createImageBitmap(new Blob([buffer], {type: 'image/png'})); //blob constructor expects array for first arg even though it's only one arraybuffer
+
+            
+
+            ctx.drawImage(bmp, 0, 0);
+
+            bmp.close();
+
+            ack(null, 'ghost client: loaded canvas image from buffer')
+
+
+        }catch(e){
+            console.log('ghost client: error loading canvas', e)
+            ack(e, null)
+        }        
+    })
     
 
     socket.on('download', options => {

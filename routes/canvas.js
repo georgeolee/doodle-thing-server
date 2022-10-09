@@ -9,15 +9,76 @@ import mongoose from 'mongoose'
 export const router = express.Router()
 
 import {CanvasCache} from '../CanvasCache.js'
+import { CanvasDBHandler } from '../CanvasDBHandler.js'
 
 const cache = new CanvasCache();
+const canvasDB = new CanvasDBHandler();
+
+const db = mongoose.connection;
+//start database processes
+db.once('open', async () => {
 
 
+    //poll for ghost socket
+    const ghostPromise = new Promise((resolve, reject) => {    
+        const getGhost = async () => {
+            try{
+                const gs = await getGhostSocket();            
+                if(gs) resolve(gs);                
+                else setTimeout(getGhost, 100);
+            }catch(e){
+                reject(e)
+            }            
+        }            
+        getGhost()                  
+    }).catch(e => console.log('GP', e));
+
+    //query canvas saves from db
+    const canvasPromise = canvasDB.retrieveDBCanvases().catch(e => console.log('CP', e));
+
+    const [ghost, canvases] = await Promise.all([ghostPromise, canvasPromise]);
+    
+    let toSend = {}
+
+    canvases.forEach(canvas => {
+        const size = `${canvas.width}x${canvas.height}`        
+        if(!toSend[size] || Number(toSend[size].timestamp) < Number(canvas.timestamp)){
+            toSend[size] = canvas;
+        }
+    })
 
 
-let lastSave = null;
+    //promise for each image load
+    const p = []
 
-let isSaving = false;
+    for(const size in toSend){            
+        const {buffer, width, height} = toSend[size]
+        let settlePromise;
+        
+        const loadImage = new Promise((resolve, reject) => {
+            settlePromise = (err, val) => {
+                if(err) reject(err);
+                else resolve(val);
+                console.log('settling ghost canvas promise')
+            }
+
+            setTimeout(() => reject('timed out'), 60*1000);
+        }).catch(e => console.log('failed to load db canvas in local client',e));
+
+        p.push(loadImage);
+
+        console.log(`IS IT A BUFFER IN NODE? : ----- ${Buffer.isBuffer(buffer)}`)
+        
+        ghost.emit('load canvas', width, height, buffer, settlePromise)
+    }
+
+    //wait for canvases to load db images
+    await Promise.allSettled(p);
+    
+    
+    console.log('starting db update loop')
+    dbUpdateLoop();
+})
 
 //CORS
 router.use((req, res, next) => {
@@ -28,11 +89,6 @@ router.use((req, res, next) => {
 })
 
 
-// errors
-router.use((err, req, res, next) => {
-    console.log(err)
-    res.status(500).send('whoops. something weird happened')
-})
 
 
 //canvas timestamp - clients can compare to see if canvas update is necessary
@@ -73,6 +129,10 @@ router.get('/', async (req, res) => {
     
     //check if cached buffer is up to date
     const cached = cache.getEntry(width, height);
+
+    console.log(`canvas req -> has cache entry? ${!!cached}\t | is stale? ${cached?.isStale}`)
+
+    
     if(cached != null && cached.isStale === false){
         sendCanvasBinary(res, cached.buffer, cached.timestamp);
         return console.log('no timestamp change ---- sending cached canvas buffer');
@@ -81,10 +141,13 @@ router.get('/', async (req, res) => {
 
     getCanvasBlob({width, height})
         .then(blob => {
+            console.log(Buffer.isBuffer(blob))
             console.log(`got canvas blob; length: ${blob.length}`)
             mils('blob success')
 
-            const buffer = Buffer.from(blob, 'binary')
+            const buffer = blob;
+            // const buffer = Buffer.from(blob, 'binary') socket.io already converts the client blob to node Buffer
+
             const timestamp = getCanvasTimeStamp()
 
             //update the cached values
@@ -146,36 +209,7 @@ function sendCanvasBinary(res, buffer, timestamp){
     stream.pipe(res);
 }
 
-async function updateDBCanvas(fields){
 
-    const {timestamp, width, height} = fields;
-    
-    try{
-
-        if(isSaving) throw new Error('save operation already in progress')
-        isSaving = true;
-
-        const canvas = new Canvas({...fields});
-
-        await canvas.save();
-        console.log('saved canvas to db');
-
-        lastSave = timestamp;
-
-        const results = await Canvas.find({width,height})
-                                    .select('timestamp')
-                                    .sort({timestamp: 1})
-                                    .collation({locale: 'en_US', numericOrdering: true})
-                                    .exec()
-
-        console.log(results);
-        
-        isSaving = false;
-
-    }catch(e){
-        console.log(e)
-    }
-}
 
 
 function wait(mils){
@@ -184,22 +218,39 @@ function wait(mils){
     })
 }
 
+
+//TODO
+
+//goal -> db timestamp should be up to date (or close)
+
+//atm:
+//canvas cache currently only updates on blob request
+//as written, db won't get updated if the cache is stale
+
+//should be
+    //a) comparing getCanvasTimeStamp() value to db timestamp to decide if update is required, and
+    //b) if need to update, check cache freshness to determine whether need to use [cached buffer OR getCanvasBlob] as buffer source for db entry
+
 async function dbUpdateLoop(){
-    const sleepTime = 10*60*1000
+    const sleepTime = 5*60*1000    //10 min interval
     while(true){
         
         await wait(sleepTime)
 
+        console.log('db update in progress..')
+        
+        try{
+            await Promise.allSettled(
+                cache
+                    .getEntries()
+                    .filter(entry => (entry && !entry.isStale))
+                    .map(entry => canvasDB.updateDBCanvas(entry))
+            )
+            console.log('db update done..?')
+        }catch(e){
+            console.log('db update error', e)
+        }
+        
 
     }
 }
-
-// setInterval(() => {
-//     if(!isSaving && canvasBuffer && lastSave !== bufferTimestamp){
-//         saveCanvasToDB({
-//             buffer: canvasBuffer,
-//             timestamp: bufferTimestamp,
-//         })
-//     }
-// }, 10000)
-
