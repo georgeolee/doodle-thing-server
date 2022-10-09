@@ -247,10 +247,9 @@ function wait(mils){
 //cleaner system for tracking canvas sizes -> where to keep?
 
 async function dbUpdateLoop(){
-    const sleepTime = 5*60*1000    // ms update interval
     while(true){
         
-        await wait(sleepTime)
+        await wait(process.env.DB_UPDATE_INTERVAL_MILLIS || 1000*60*15)
 
         console.log('db update in progress..')
         
@@ -298,8 +297,6 @@ async function dbUpdateLoop(){
             console.log('db update error', e)
         }
         
-
-        // await wait(sleepTime)
 
     }
 }
