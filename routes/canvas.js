@@ -249,7 +249,9 @@ function wait(mils){
 async function dbUpdateLoop(){
     while(true){
         
-        await wait(process.env.DB_UPDATE_INTERVAL_MILLIS || 1000*60*15)
+        const interval = Number(process.env.DB_UPDATE_INTERVAL_MILLIS || 1000*60*15)        
+
+        await wait(interval)
 
         console.log('db update in progress..')
         
