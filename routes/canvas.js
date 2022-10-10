@@ -11,7 +11,7 @@ export const router = express.Router()
 import {CanvasCache} from '../CanvasCache.js'
 import { CanvasDBHandler } from '../CanvasDBHandler.js'
 
-// import PngQuant from 'pngquant'
+import PngQuant from 'pngquant'
 
 const cache = new CanvasCache();
 const canvasDB = new CanvasDBHandler();
@@ -23,8 +23,7 @@ const canvasSizes = {
     900:[900]
 };
 
-//pngquant 
-// const pq = new PngQuant([128, '--speed', 11]); //128 colors, speed 11, pipe i/o
+
 
 
 
@@ -81,8 +80,6 @@ db.once('open', async () => {
         }).catch(e => console.log('failed to load db canvas in local client',e));
 
         p.push(loadImage);
-
-        console.log(`IS IT A BUFFER IN NODE? : ----- ${Buffer.isBuffer(buffer)}`)
         
         ghost.emit('load canvas', width, height, buffer, settlePromise)
     }
@@ -98,7 +95,7 @@ db.once('open', async () => {
 //CORS
 router.use((req, res, next) => {
     res.header('access-control-allow-origin', process.env.CLIENT_URL)  
-    res.header('access-control-expose-headers', 'x-timestamp, retry-after')  
+    res.header('access-control-expose-headers', 'x-timestamp, retry-after, x-uncompressed-length')  
     console.log(`${req.method}: ${req.originalUrl}`)
     next()
 })
@@ -155,12 +152,35 @@ router.get('/', async (req, res) => {
 
 
     getCanvasBlob({width, height})
-        .then(blob => {
+        .then(async blob => {
+            
+
             console.log(Buffer.isBuffer(blob))
             console.log(`got canvas blob; length: ${blob.length}`)
             mils('blob success')
 
+            //current working version
             const buffer = blob;
+
+
+            /*******v*TESTING***********/
+
+            //readable from blob
+
+            //pipe readable to pq
+
+            //on finished piping, get pq readable length -> set res content-length to pq readable length
+
+
+            //pipe pq to res
+
+            //xxxxxxxxxxx
+            //pipe pq to writable
+
+            //on writable fi
+
+            /*******^*TESTING***********/
+
             // const buffer = Buffer.from(blob, 'binary') socket.io already converts the client blob to node Buffer
 
             const timestamp = getCanvasTimeStamp()
@@ -203,9 +223,13 @@ async function getCanvasBlob(dimensions = {}){
 
 function sendCanvasBinary(res, buffer, timestamp){
     res.header('content-type', 'image/png')
-    res.header('content-length', buffer.length)
+    // res.header('content-length', buffer.length)
+
+    
     res.header('x-timestamp', timestamp)                
 
+
+    res.header('x-uncompressed-length', buffer.length)
 
     const stream = Readable.from(buffer)
 
@@ -223,9 +247,25 @@ function sendCanvasBinary(res, buffer, timestamp){
         next(e)
     })
 
-    res.status(200)
-    stream.pipe(res);
+    //current
+    // res.status(200)
+    // stream.pipe(res);
 
+
+    //testing
+    //pngquant 
+    const pq = new PngQuant([128, '--speed', 11, '-']); //128 colors, speed 11, pipe i/o
+
+    pq.on('error', e => {
+        console.log('pq error', e)
+        res.status(500).send('server error')
+        pq?.destroy()
+        next(e)
+    })
+
+    res.status(200)
+
+    stream.pipe(pq).pipe(res)
     
     // console.log('BUFFER LENGTH', buffer.length)
 
