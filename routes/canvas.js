@@ -24,9 +24,7 @@ const canvasSizes = {
 };
 
 
-
-
-
+//q - should this go somewhere else? probably. move to main file?
 
 //start database processes
 const db = mongoose.connection;
@@ -62,7 +60,7 @@ db.once('open', async () => {
     })
 
 
-    //promise for each image load
+    //promise for each canvas image load on ghost client
     const p = []
 
     for(const size in toSend){            
@@ -159,29 +157,7 @@ router.get('/', async (req, res) => {
             console.log(`got canvas blob; length: ${blob.length}`)
             mils('blob success')
 
-            //current working version
-            const buffer = blob;
-
-
-            /*******v*TESTING***********/
-
-            //readable from blob
-
-            //pipe readable to pq
-
-            //on finished piping, get pq readable length -> set res content-length to pq readable length
-
-
-            //pipe pq to res
-
-            //xxxxxxxxxxx
-            //pipe pq to writable
-
-            //on writable fi
-
-            /*******^*TESTING***********/
-
-            // const buffer = Buffer.from(blob, 'binary') socket.io already converts the client blob to node Buffer
+            const buffer = blob;        
 
             const timestamp = getCanvasTimeStamp()
 
@@ -225,15 +201,13 @@ function sendCanvasBinary(res, buffer, timestamp){
     res.header('content-type', 'image/png')
     // res.header('content-length', buffer.length)
 
-    
     res.header('x-timestamp', timestamp)                
 
-
+    //for sending compresssed stream - send uncompressed length so client has an upper bounds for buffer size
     res.header('x-uncompressed-length', buffer.length)
 
     const stream = Readable.from(buffer)
 
-    
 
     stream.on('date', data => console.log(`on data in ${data.length} bytes`))
 
@@ -247,13 +221,11 @@ function sendCanvasBinary(res, buffer, timestamp){
         next(e)
     })
 
-    //current
+    //stream uncompressed
     // res.status(200)
     // stream.pipe(res);
 
-
-    //testing
-    //pngquant 
+    //compress w/ pngquant 
     const pq = new PngQuant([128, '--speed', 11, '-']); //128 colors, speed 11, pipe i/o
 
     pq.on('error', e => {
@@ -267,9 +239,7 @@ function sendCanvasBinary(res, buffer, timestamp){
 
     stream.pipe(pq).pipe(res)
     
-    // console.log('BUFFER LENGTH', buffer.length)
-
-    
+    // console.log('BUFFER LENGTH', buffer.length)    
 }
 
 

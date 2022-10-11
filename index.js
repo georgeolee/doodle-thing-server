@@ -86,7 +86,7 @@ server.listen(process.env.PORT, () => {
     startGhost()
 })
 
-
+//set socket listeners
 io.on('connection', socket => {
 
     console.log(`new socket connection ----- id: ${socket.id}`)
