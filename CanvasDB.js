@@ -1,7 +1,6 @@
 import { Canvas } from "./models/canvas.js";
-// import mongoose from "mongoose";
 
-export class CanvasDBHandler{
+export class CanvasDB{
    
     //track current timestamp for each canvas size
     #timestamps;
@@ -19,15 +18,6 @@ export class CanvasDBHandler{
         const key = this.#key(width, height);
         this.#timestamps[key] = timestamp;
     }
-
-    // async removeDups(){
-    //     Canvas.aggregate([
-    //         {$group: {'_id': '$width', 'count': {'$sum':1}}},
-    //         {$match: {'count': {$gt:1}}},
-    //         // {$project: {'height':1, 'timestamp':1, '_id':1}},
-    //         {$group: {'_id':null, duplicateWidth: {$push:{width: '$width', height: '$height', id: '$_id', timestamp: '$timestamp'}}}},
-    //     ])
-    // }
 
     async removeAll(){
         await Canvas.deleteMany({})
@@ -47,7 +37,8 @@ export class CanvasDBHandler{
     
             const canvas = new Canvas({...fields});
     
-            await canvas.save();            
+            await canvas.save();   
+                     
             console.log('saved canvas to db');
     
             this.#stamp(width, height, timestamp);
@@ -64,7 +55,7 @@ export class CanvasDBHandler{
     }
 
 
-    async retrieveDBCanvases(){        
+    async getDBCanvases(){        
 
         try{
             const results = await Canvas.find({});
@@ -82,7 +73,13 @@ export class CanvasDBHandler{
     }
 
 
-    getTimestampOf(width, height){
+    /**
+     * 
+     * @param {string|number} width 
+     * @param {string|number} height 
+     * @returns {string|undefined}
+     */
+    getDBTimestampForSize(width, height){
         return this.#timestamps[this.#key(width, height)];
     }
 }

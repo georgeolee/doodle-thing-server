@@ -4,6 +4,15 @@ import { Server } from 'socket.io'
 import http from 'http'
 import puppeteer from 'puppeteer'
 
+//start canvas processes
+import {
+    timestamp,
+    loadCanvasImages, 
+    startCanvasSaveLoop,
+} from './canvas.js'
+
+import { initSizeMap } from './sizes.js'
+
 // import * as path from 'path'
 
 //__dirname & __filename fix for es module syntax
@@ -12,33 +21,30 @@ import puppeteer from 'puppeteer'
 // const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 
-export const snapShots = {}
-
-let timestamp = Date.now().toString();
 
 
 
-export function getCanvasTimeStamp(){
-    return timestamp
-}
+//config env variables (dev only)
+if(process.env.NODE_ENV !== 'production') await import('dotenv').then(dotenv => dotenv.config())
 
-
-
-//dotenv import & config – skip for production version
-if(process.env.NODE_ENV !== 'production'){
-    await import('dotenv').then(dotenv => { 
-        dotenv.config()        
-    })
-}
-
-//MONGODB
-import {Canvas} from './models/canvas.js'
+initSizeMap()
 
 //connect to mongodb
 mongoose.connect(process.env.DATABASE_URL)
 const db = mongoose.connection
 db.on('error', error => console.log(error))
-db.once('open', () => console.log('connected to mongodb'))
+
+
+db.once('open', async () => {
+    console.log('connected to mongodb')
+
+    try{
+        await loadCanvasImages();
+        startCanvasSaveLoop(process.env.DB_UPDATE_INTERVAL_MILLIS);
+    }catch(e){
+        console.log(e)
+    }
+})
 
 
 const app = express()
@@ -69,7 +75,7 @@ export const io = new Server(server, {
     cors:{
         origin: process.env.CLIENT_URL,
     },
-    maxHttpBufferSize: 1e7
+    maxHttpBufferSize: 1e7 //increase buffer size for transmitting big png images from puppeteer client over socket connection
 })
 
 //ghost client socket instance, or null
@@ -126,7 +132,8 @@ io.on('connection', socket => {
 
         //timestamp update from puppeteer client
         socket.on('timestamp', ts => {
-            timestamp = ts
+            // timestamp = ts
+            timestamp.set(ts)
         })
         
     })
@@ -160,3 +167,4 @@ async function startGhost(){
         downloadPath: './puppeteer/downloads'
     })
 }
+

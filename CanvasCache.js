@@ -1,16 +1,18 @@
-import { getCanvasTimeStamp } from "./index.js";
+// import { getCanvasTimeStamp } from "./index.js";
+
+import { timestamp as latestCanvasTimestamp } from "./canvas.js";
 
 export class CanvasCache{
 
-    cache;
-    shelfLifeMillis;
+    #cache;
+    #shelfLifeMillis;
 
-    trackedSizes;
+    #trackedSizes;
 
     constructor(){
-        this.cache = {}
-        this.shelfLifeMillis = 0;
-        this.trackedSizes = []
+        this.#cache = {}
+        this.#shelfLifeMillis = 0;
+        this.#trackedSizes = []
     }
 
     // format key
@@ -35,11 +37,11 @@ export class CanvasCache{
 
             const key = this.#key(width, height);
 
-            if(!this.cache[key]){
-                this.trackedSizes.push([width, height])
+            if(!this.#cache[key]){
+                this.#trackedSizes.push([width, height])
             }
 
-            this.cache[key] = fields;
+            this.#cache[key] = fields;
             
         }catch(e){
             console.error(`${e.name}: ${e.message}`)
@@ -53,17 +55,21 @@ export class CanvasCache{
      * @returns {{buffer:Buffer,width:string,height:string,timestamp:string,isStale:boolean}|null}
      */
     getEntry(width, height){
-        const entry = this.cache[this.#key(width, height)]
+        const entry = this.#cache[this.#key(width, height)]
 
         if(!entry) return null;
 
-        const isStale = Number(getCanvasTimeStamp()) - Number(entry.timestamp) > this.shelfLifeMillis;
+        const shelfLife = this.#shelfLifeMillis;
 
-        return {...entry, isStale}
+        return {
+            ...entry, 
+            get isStale(){
+                return latestCanvasTimestamp.number - Number(entry.timestamp) > shelfLife;
+            }}
     }
 
     getEntries(){
-        return this.trackedSizes.map(size => this.getEntry(...size));
+        return this.#trackedSizes.map(size => this.getEntry(...size));
     }
 
 }
