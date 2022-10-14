@@ -10,11 +10,9 @@ export function initSizeMap(){
         for(const size of parseCSV(process.env.CANVAS_SIZES)){
             const [w, h] = size
             if(!sizeMap.has(w)){
-                sizeMap.set(w, [h])
+                sizeMap.set(w, new Set([h]))
             }
-            else if(!sizeMap.get(w).includes(h)){
-                sizeMap.get(w).push(h);
-            }
+            else sizeMap.get(w).add(h)
         }
         console.log(sizeMap)
     }catch(e){

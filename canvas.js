@@ -13,14 +13,19 @@ import { sizeMap } from "./sizes.js";
 /** timestamp representing the most recent canvas edit among all clients. has string and number getters, and a single setter */
 export const timestamp = new Timestamp();
 
-/** cache containing the most recent requested buffer and corresponding timestamp ; has a separate entry for each size */
-export const cache = new CanvasCache();
-
 /** interface for canvas database interaction - saving, reading, tracking timestamps */
 export const db = new CanvasDB();
 
+/** cache containing the most recent requested buffer and corresponding timestamp ; has a separate entry for each size */
+const cache = new CanvasCache();
+
 
 let loopController = null;
+
+let loadingFinished = false;
+
+/**return true if finished (either successfully or unsuccessfully) loading canvases from db */
+export const isLoadingFinished = () => loadingFinished;
 
 /**
  * get canvas buffer and timestamp from cache (if cache timestamp is fresh) or puppeteer client (if cache is stale or empty)
@@ -32,21 +37,24 @@ export async function getCanvasBuffer(dimensions){
     //request specific dimensions or default
     const {width, height} = dimensions;
 
+    //resolve to cached buffer if available & fresh
     const cached = cache.getEntry(width, height);
     if(cached != null && !cached.isStale){        
         
-        //resolve to cached buffer
         return {
             buffer:cached.buffer,
             timestamp:cached.timestamp
         }
     }
+    
+
+    //otherwise, get buffer from ghost client
 
     const ghost = await getGhostSocket();
 
     return new Promise((resolve, reject) => {         
         
-        //pass acknowledge callback to ghost client socket
+        //pass acknowledge callback to ghost socket
         const ack = (error, buffer) => {
             if(error) reject(error);
             else{    
@@ -123,24 +131,18 @@ async function saveAllCanvases(){
 
         const currentTimestamp = timestamp.string
 
-        for(const [width, heightArray] of sizeMap){            
-
+        //iterate through width & height
+        for(const [width, heightArray] of sizeMap){ 
             for(const height of heightArray){
 
-                //skip canvas if up to date
+                //skip canvas if nothing changed since last db update
                 if(db.getDBTimestampForSize(width, height) === currentTimestamp) continue
 
-                const cached = cache.getEntry(width, height)
 
-                let p; 
-
-                //up to date cache entry
-                if(cached?.isStale === false){
-                    p = db.updateDBCanvas(cached)
-                }else{
-                    p = getCanvasBuffer({width, height}).then(({buffer,timestamp}) => db.updateDBCanvas({width, height, buffer, timestamp}))
-                }
-
+                //promise that settles when db update succeeds or fails
+                const p = getCanvasBuffer({width, height})
+                    .then(({buffer,timestamp}) => db.updateDBCanvas({width, height, buffer, timestamp}))
+                    .catch(e => console.error(e))
                 updates.push(p)
                 console.log(`pushing canvas db update\t|\tsize: ${width} x ${height}`)
             }
@@ -149,7 +151,7 @@ async function saveAllCanvases(){
         await Promise.allSettled(updates);
         console.log('db update settled')
     }catch(e){
-        console.error('db update error', e)
+        console.error(e)
     }
 }
 
@@ -171,7 +173,7 @@ export async function loadCanvasImages(){
             }            
         }            
         getGhost()                  
-    }).catch(e => console.error('GP', e));
+    }).catch(e => console.error(e));
 
     //query canvas saves from db
     const canvasPromise = db.getDBCanvases().catch(e => console.error(e));
@@ -206,7 +208,7 @@ export async function loadCanvasImages(){
             }
 
             setTimeout(() => reject(new Error('loadCanvasImages(): timed out while loading canvas')), timeoutMillis);
-        }).catch(e => console.error(`loadCanvasImages(): failed to load db canvas (${width}x${height}) in local client`,e));
+        }).catch(e => console.error(e));
 
         p.push(loadImage);
         
@@ -216,5 +218,6 @@ export async function loadCanvasImages(){
 
     //wait til all loading succeeds or fails
     await Promise.allSettled(p);
+    loadingFinished = true;
     console.log('loadCanvasImages(): finished loading canvas images')
 }

@@ -7,7 +7,7 @@ import {
 
 import {Readable} from 'stream'
 
-import { getCanvasBuffer } from '../canvas.js'
+import { getCanvasBuffer, isLoadingFinished } from '../canvas.js'
 
 export const router = express.Router()
 
@@ -40,7 +40,7 @@ router.get('/timestamp', (req, res) => {
 router.use('/', async (req, res, next) => {
     const ghost = await getGhostSocket()
     
-    if(ghost != null){
+    if(ghost != null && isLoadingFinished()){
         console.log('canvas request - ghost ready')
         next() //good to go
     } 
