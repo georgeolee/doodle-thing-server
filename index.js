@@ -21,7 +21,7 @@ import { initSizeMap } from './sizes.js'
 // const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
 
 
-
+import { User } from './users.js'
 
 
 //config env variables (dev only)
@@ -32,7 +32,7 @@ initSizeMap()
 //connect to mongodb
 mongoose.connect(process.env.DATABASE_URL)
 const db = mongoose.connection
-db.on('error', error => console.log(error))
+db.on('error', error => console.error(error))
 
 
 db.once('open', async () => {
@@ -42,7 +42,7 @@ db.once('open', async () => {
         await loadCanvasImages();
         startCanvasSaveLoop(process.env.DB_UPDATE_INTERVAL_MILLIS);
     }catch(e){
-        console.log(e)
+        console.error(e)
     }
 })
 
@@ -50,10 +50,7 @@ db.once('open', async () => {
 const app = express()
 
 //parse JSON request bodies
-app.use(express.json({
-    limit: '100kb',
-    type: '*/*'
-}))
+// app.use(express.json({limit: '100kb', type: '*/*'}))
 
 app.set('view engine', 'pug')
 
@@ -92,6 +89,7 @@ server.listen(process.env.PORT, () => {
     startGhost()
 })
 
+
 //set socket listeners
 io.on('connection', socket => {
 
@@ -99,15 +97,39 @@ io.on('connection', socket => {
     
     io.to(socket.id).emit('confirmation')
 
+    const users = User.getUserList()
+
+    console.log('\n\n\n\n')
+    console.log(users)
+    console.log('\n\n\n\n')
+
+    io.to(socket.id).emit('user', users)
+
+    /**
+     *      send current user list to new user
+     *      
+     *      io.to(socket.id).emit('user list', User.getUserList())
+     * 
+     *      ...
+     * 
+     */
+
 
     socket.on('disconnect', () => {
-        console.log(`socket disconnected ----- id: ${socket?.id}`)
+        console.log(`socket disconnected ----- socket id: ${socket?.id}`)        
+
+
+        //check if there was a user registered to the socket
+        const disconnectedUser = User.delete(socket); //<- stop tracking disconnected user status        
+
+        if(disconnectedUser){
+            console.log(`user id ${disconnectedUser.id} disconnected`)
+            io.to('user room').emit('user', {id:disconnectedUser.id, disconnect: true})
+        }
+
         socket.removeAllListeners()
     })
 
-    socket.on('message', msg => {
-        console.log(msg)
-    })
 
     socket.on('click', date => {
         console.log(`click from ${socket.id}: ${date}`)
@@ -118,10 +140,9 @@ io.on('connection', socket => {
     })
 
 
+    //broadcast drawing data to fellow clients & ghost client
     socket.on('drawingData', data => {
-        socket.broadcast.emit('drawingData', data)
-
-        //send to clients & ghost client
+        socket.broadcast.emit('drawingData', data)        
     })
 
     //puppeteer client connect
@@ -132,16 +153,47 @@ io.on('connection', socket => {
 
         //timestamp update from puppeteer client
         socket.on('timestamp', ts => {
-            // timestamp = ts
             timestamp.set(ts)
         })
         
     })
 
-    // //client connect
-    // socket.on('user', () => {
-    //     socket.join('user room')
-    // })
+    //TODO --- on socket disconnect, broadcast disconnect message from server to remaining clients
+    // share map of all current users with new clients when they connect
+
+
+
+    //user data update from client
+    socket.on('user', (userData) => {
+
+        console.log(userData)
+
+
+        //TODO  ---- figure where / how to do this -->  send current user list to new client connections
+        if(!User.get(socket)){
+            // io.to(socket.id).emit('user', User.getUserList())
+        }
+
+        //update user representation on the server
+        const user = User.set(socket, userData); // <- track user status
+
+        console.log('\n\nCOLOR')
+        console.log(user.data.color)
+
+        //user didn't include a session id (ie, new user connecting) –> send assign id to user
+        if(!userData.id){
+            io.to(socket.id).emit('assign id', user.id); //assign an id to the client
+
+            //TODO - same as above - where should this happen?
+            // io.to(socket.id).emit('user', User.getUserList())
+            
+        }
+
+        //broadcast user status
+        socket.broadcast.except('ghost room').emit('user', [user.data])
+
+        socket.join('user room')
+    })
 
     socket.on('ping', () => {
         console.log(`ping from socket id ${socket.id}`)
