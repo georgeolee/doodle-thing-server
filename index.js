@@ -115,6 +115,7 @@ io.on('connection', socket => {
      */
 
 
+    //TODO get disconnect message to clients working
     socket.on('disconnect', () => {
         console.log(`socket disconnected ----- socket id: ${socket?.id}`)        
 
@@ -124,7 +125,7 @@ io.on('connection', socket => {
 
         if(disconnectedUser){
             console.log(`user id ${disconnectedUser.id} disconnected`)
-            io.to('user room').emit('user', {id:disconnectedUser.id, disconnect: true})
+            io.to('user room').emit('user', [{id:disconnectedUser.id, disconnect: true}]) // <- wrap user in array
         }
 
         socket.removeAllListeners()
