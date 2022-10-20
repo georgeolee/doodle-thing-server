@@ -102,8 +102,10 @@ io.on('connection', socket => {
     const users = User.getUserList()
     io.to(socket.id).emit('user', users)
 
-
     //TODO - send updated user list on reconnect
+    socket.on('reconnect', () => {
+        io.to(socket.id).emit('user', User.getUserList())
+    }) 
 
     socket.on('disconnect', () => {
         console.log(`socket disconnected ----- socket id: ${socket?.id}`)        

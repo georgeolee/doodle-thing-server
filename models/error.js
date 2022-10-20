@@ -23,7 +23,7 @@ const errorSchema = new mongoose.Schema({
     //date at which the error occurred - append in middleware below
     date: {
         type: 'string',
-        // required: true, 
+        required: false, 
     },
 
     //non-standard error properties
@@ -59,8 +59,8 @@ const errorSchema = new mongoose.Schema({
 
 errorSchema.pre('save', function(){
     this.set('date', new Date().toUTCString())
-    console.log('PRE')
 })
+
 
 export const ClientError = new mongoose.model('ClientError', errorSchema)
 export const ServerError = new mongoose.model('ServerError', errorSchema)
