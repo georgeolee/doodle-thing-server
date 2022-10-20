@@ -58,11 +58,12 @@ app.set('view engine', 'pug')
 import { router as indexRouter } from './routes/index.js'
 import { router as canvasRouter } from './routes/canvas.js'
 import { router as ghostRouter } from './routes/ghost.js'
+import { router as errorRouter } from './routes/error.js' //client error reporting
 
 app.use('/', indexRouter)
 app.use('/canvas', canvasRouter)
 app.use('/ghost', ghostRouter)
-
+app.use('/error', errorRouter)
 
 //HTTP server
 const server = http.createServer(app)
@@ -102,7 +103,7 @@ io.on('connection', socket => {
     io.to(socket.id).emit('user', users)
 
 
-    //TODO - send updated list on reconnect
+    //TODO - send updated user list on reconnect
 
     socket.on('disconnect', () => {
         console.log(`socket disconnected ----- socket id: ${socket?.id}`)        
