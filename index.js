@@ -151,17 +151,12 @@ io.on('connection', socket => {
     //user data update from client
     socket.on('user', (userData) => {
 
-        console.log(userData)
+        //create/update user representation on the server
+        const user = User.set(socket, userData);
 
-        //update user representation on the server
-        const user = User.set(socket, userData); // <- track user status
-
-        console.log('\n\nCOLOR')
-        console.log(user.data.color)
-
-        //user didn't include a session id (ie, new user connecting) –> send assign id to user
+        //user didn't include a session id, User.set() will generate a new one
         if(!userData.id){
-            io.to(socket.id).emit('assign id', user.id); //assign an id to the client            
+            io.to(socket.id).emit('assign id', user.id); //assign the new id to the client            
         }
 
         //broadcast user status
@@ -181,8 +176,6 @@ io.on('connection', socket => {
 
 async function startGhost(){
     const url = `http://localhost:${process.env.PORT}/ghost`
-
-    console.log(url)
     const browser = await puppeteer.launch({ args: ['--no-sandbox'], dumpio: process.env.PUPPETEER_LOG })
     const page = await browser.newPage()
     await page.goto(url)

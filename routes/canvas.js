@@ -1,9 +1,7 @@
 import express from 'express'
 
 
-import { 
-    // getCanvasTimeStamp, 
-    getGhostSocket } from '../index.js'
+import { getGhostSocket } from '../index.js'
 
 import {Readable} from 'stream'
 
@@ -28,7 +26,6 @@ router.use((req, res, next) => {
 
 //canvas timestamp - clients can compare to see if canvas update is necessary
 router.get('/timestamp', (req, res) => {
-    // const ts = getCanvasTimeStamp()
 
     const ts = timestamp.string
     res.header('content-type', 'text/plain')
@@ -54,50 +51,35 @@ router.use('/', async (req, res, next) => {
 
 //get canvas binary data
 router.get('/', async (req, res) => {
-    
-    const start = Date.now()
-
-    const mils = (message = '') => {
-        console.log(`${message}-------${Date.now() - start}ms since GET request received`)
-    }
 
     //get query params
     const {width = 300, height = 300} = req.query
     
+    try{
 
-    getCanvasBuffer({width, height})
-        .then(async ({buffer,timestamp}) => {
-            
+        const {buffer, timestamp} = await getCanvasBuffer({width, height})
+        console.log(`got canvas blob; length: ${buffer.length}`)
 
-            console.log(`got canvas blob; length: ${buffer.length}`)
-            mils('blob success')
+        //stream compressed canvas image to client
+        sendCanvasBinary(res, buffer, timestamp);
 
-            
-
-            //send canvas data to client
-            sendCanvasBinary(res, buffer, timestamp);                        
-
-        })
-        .catch(e => {
-            mils('blob error')
-            console.log('error getting blob',e)
-            res.status(500).send('error getting canvas data')
-        })
+    }catch(e){
+        console.log('error getting blob:')
+        console.error(e)
+        res.status(500).send('server error getting canvas data')
+    }
 
 })
 
 
 function sendCanvasBinary(res, buffer, timestamp){
     res.header('content-type', 'image/png')
-    // res.header('content-length', buffer.length)
-
     res.header('x-timestamp', timestamp)                
 
-    //for sending compresssed stream - send uncompressed length so client has an upper bounds for buffer size
+    //for sending compressed stream - send uncompressed length so client has an upper bounds for buffer size
     res.header('x-uncompressed-length', buffer.length)
 
     const stream = Readable.from(buffer)
-
 
     stream.on('date', data => console.log(`on data in ${data.length} bytes`))
 
