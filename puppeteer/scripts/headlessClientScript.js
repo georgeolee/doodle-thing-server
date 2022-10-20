@@ -146,9 +146,9 @@ function connect(){
         })
     })
 
-    setInterval(() => {
-        socket.emit('ping')
-    }, 10000)
+    // setInterval(() => {
+    //     socket.emit('ping')
+    // }, 60000)
 }
 
 function runHeadlessClient(){

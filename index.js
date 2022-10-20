@@ -170,10 +170,10 @@ io.on('connection', socket => {
         socket.join('user room')
     })
 
-    socket.on('ping', () => {
-        console.log(`ping from socket id ${socket.id}`)
-        io.to(socket.id).emit('pong')        
-    })
+    // socket.on('ping', () => {
+    //     console.log(`ping from socket id ${socket.id}`)
+    //     io.to(socket.id).emit('pong')        
+    // })
 
 
 });
