@@ -97,25 +97,13 @@ io.on('connection', socket => {
     
     io.to(socket.id).emit('confirmation')
 
+    //SEND NEW USER CURRENT CLIENT LIST
     const users = User.getUserList()
-
-    console.log('\n\n\n\n')
-    console.log(users)
-    console.log('\n\n\n\n')
-
     io.to(socket.id).emit('user', users)
 
-    /**
-     *      send current user list to new user
-     *      
-     *      io.to(socket.id).emit('user list', User.getUserList())
-     * 
-     *      ...
-     * 
-     */
 
+    //TODO - send updated list on reconnect
 
-    //TODO get disconnect message to clients working
     socket.on('disconnect', () => {
         console.log(`socket disconnected ----- socket id: ${socket?.id}`)        
 
@@ -159,21 +147,10 @@ io.on('connection', socket => {
         
     })
 
-    //TODO --- on socket disconnect, broadcast disconnect message from server to remaining clients
-    // share map of all current users with new clients when they connect
-
-
-
     //user data update from client
     socket.on('user', (userData) => {
 
         console.log(userData)
-
-
-        //TODO  ---- figure where / how to do this -->  send current user list to new client connections
-        if(!User.get(socket)){
-            // io.to(socket.id).emit('user', User.getUserList())
-        }
 
         //update user representation on the server
         const user = User.set(socket, userData); // <- track user status
@@ -183,11 +160,7 @@ io.on('connection', socket => {
 
         //user didn't include a session id (ie, new user connecting) –> send assign id to user
         if(!userData.id){
-            io.to(socket.id).emit('assign id', user.id); //assign an id to the client
-
-            //TODO - same as above - where should this happen?
-            // io.to(socket.id).emit('user', User.getUserList())
-            
+            io.to(socket.id).emit('assign id', user.id); //assign an id to the client            
         }
 
         //broadcast user status

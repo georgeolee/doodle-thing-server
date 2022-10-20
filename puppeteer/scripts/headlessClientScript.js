@@ -66,7 +66,8 @@ function connect(){
 
     //process drawing data coming in from other sockets
     socket.on('drawingData', pdata => {        
-        const data = JSON.parse(pdata)
+        // const data = JSON.parse(pdata)
+        const data = pdata
 
         for(const d of doodlers){
             d.consumeDrawingData(data)
