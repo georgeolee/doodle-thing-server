@@ -1,3 +1,3 @@
 # doodle-thing-server
 
-Heroku backend for live drawing app
+Node.js backend for live drawing app
